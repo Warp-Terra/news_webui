@@ -34,6 +34,19 @@ export interface NewsAiFieldsUpdate {
 
 export type AiUsageOperation = 'summarize' | 'aggregate' | 'daily-report'
 
+export type AiProviderName = 'openai' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'custom'
+
+export interface AiSettings {
+  provider: AiProviderName
+  apiKey: string
+  baseUrl: string
+  model: string
+  temperature: number
+  maxTokens: number
+  requestTimeoutMs: number
+  updatedAt: string
+}
+
 export interface AiUsageRecord {
   id?: number
   date: string
@@ -99,6 +112,18 @@ interface AiUsageRow {
   createdAt: string
 }
 
+interface AiSettingsRow {
+  id: number
+  provider: string
+  apiKey: string
+  baseUrl: string
+  model: string
+  temperature: number
+  maxTokens: number
+  requestTimeoutMs: number
+  updatedAt: string
+}
+
 const DEFAULT_DB_PATH = './data/news.db'
 
 function resolveDbPath(dbPath: string): string {
@@ -159,6 +184,28 @@ CREATE TABLE IF NOT EXISTS ai_usage (
 );
 `
 
+const AI_SETTINGS_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS ai_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  provider TEXT NOT NULL,
+  apiKey TEXT NOT NULL DEFAULT '',
+  baseUrl TEXT NOT NULL,
+  model TEXT NOT NULL,
+  temperature REAL NOT NULL DEFAULT 0.7,
+  maxTokens INTEGER NOT NULL DEFAULT 2048,
+  requestTimeoutMs INTEGER NOT NULL DEFAULT 30000,
+  updatedAt TEXT NOT NULL
+);
+`
+
+function migrateAiSettingsTable(db: Database): void {
+  try {
+    db.exec(`ALTER TABLE ai_settings ADD COLUMN requestTimeoutMs INTEGER NOT NULL DEFAULT 30000;`)
+  } catch {
+    // Column already exists; ignore error
+  }
+}
+
 export function initDb(dbPath = process.env.NEWS_DB_PATH ?? DEFAULT_DB_PATH): Database {
   const resolvedPath = resolveDbPath(dbPath)
 
@@ -171,6 +218,8 @@ export function initDb(dbPath = process.env.NEWS_DB_PATH ?? DEFAULT_DB_PATH): Da
   db.exec(NEWS_TABLE_SQL)
   db.exec(SOURCES_TABLE_SQL)
   db.exec(AI_USAGE_TABLE_SQL)
+  db.exec(AI_SETTINGS_TABLE_SQL)
+  migrateAiSettingsTable(db)
   db.exec('CREATE INDEX IF NOT EXISTS idx_news_publishedAt ON news(publishedAt DESC);')
   db.exec('CREATE INDEX IF NOT EXISTS idx_news_region ON news(region);')
   db.exec('CREATE INDEX IF NOT EXISTS idx_news_category ON news(category);')
@@ -455,6 +504,63 @@ export function getAiUsageSummary(
   }
 }
 
+export function getAiSettings(db: Database): AiSettings | null {
+  const row = db.prepare<[], AiSettingsRow>('SELECT * FROM ai_settings WHERE id = 1').get()
+
+  return row ? mapAiSettingsRow(row) : null
+}
+
+export function upsertAiSettings(db: Database, settings: Omit<AiSettings, 'updatedAt'>): AiSettings {
+  const updatedAt = new Date().toISOString()
+
+  db.prepare<SqliteParams>(`
+    INSERT INTO ai_settings (
+      id,
+      provider,
+      apiKey,
+      baseUrl,
+      model,
+      temperature,
+      maxTokens,
+      requestTimeoutMs,
+      updatedAt
+    ) VALUES (
+      1,
+      @provider,
+      @apiKey,
+      @baseUrl,
+      @model,
+      @temperature,
+      @maxTokens,
+      @requestTimeoutMs,
+      @updatedAt
+    )
+    ON CONFLICT(id) DO UPDATE SET
+      provider = excluded.provider,
+      apiKey = excluded.apiKey,
+      baseUrl = excluded.baseUrl,
+      model = excluded.model,
+      temperature = excluded.temperature,
+      maxTokens = excluded.maxTokens,
+      requestTimeoutMs = excluded.requestTimeoutMs,
+      updatedAt = excluded.updatedAt
+  `).run({
+    provider: settings.provider,
+    apiKey: settings.apiKey,
+    baseUrl: settings.baseUrl,
+    model: settings.model,
+    temperature: settings.temperature,
+    maxTokens: settings.maxTokens,
+    requestTimeoutMs: settings.requestTimeoutMs,
+    updatedAt,
+  })
+
+  return {
+    ...settings,
+    updatedAt,
+  }
+}
+
 export function deleteNews(db: Database, id: string): boolean {
   const result = db.prepare<{ id: string }>('DELETE FROM news WHERE id = @id').run({ id })
 
@@ -628,6 +734,19 @@ function mapAiUsageRow(row: AiUsageRow): AiUsageRecord {
     newsId: row.newsId,
     operation: row.operation as AiUsageOperation,
     createdAt: row.createdAt,
+  }
+}
+
+function mapAiSettingsRow(row: AiSettingsRow): AiSettings {
+  return {
+    provider: row.provider as AiProviderName,
+    apiKey: row.apiKey,
+    baseUrl: row.baseUrl,
+    model: row.model,
+    temperature: row.temperature,
+    maxTokens: row.maxTokens,
+    requestTimeoutMs: row.requestTimeoutMs,
+    updatedAt: row.updatedAt,
   }
 }
 

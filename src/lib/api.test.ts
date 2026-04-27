@@ -4,10 +4,13 @@ import {
   batchSummarize,
   createSource,
   deleteSource,
+  fetchAiSettings,
   fetchAiUsage,
   fetchSourcesList,
   generateDailyReport,
+  saveAiSettings,
   summarizeNewsItem,
+  testAiSettings,
   updateSource,
   type AiSummaryResult,
   type AiUsageItem,
@@ -200,6 +203,49 @@ describe('AI API client', () => {
     expect(parsed.pathname).toBe('/api/ai/usage')
     expect(parsed.searchParams.get('startDate')).toBe('2026-04-20')
     expect(parsed.searchParams.get('endDate')).toBe('2026-04-23')
+  })
+
+  it('fetchAiSettings 读取 AI 配置且不包含明文密钥', async () => {
+    const result = {
+      configured: true,
+      provider: 'anthropic',
+      apiKey: '',
+      apiKeyMasked: 'sk-a************3456',
+      baseUrl: 'https://api.anthropic.com/v1',
+      model: 'claude-3-5-sonnet-latest',
+      temperature: 0.2,
+      maxTokens: 4096,
+    } as const
+    fetchMock.mockResolvedValueOnce(jsonResponse(result))
+
+    await expect(fetchAiSettings()).resolves.toEqual(result)
+    expect(fetchMock).toHaveBeenCalledWith('/api/ai/settings')
+  })
+
+  it('saveAiSettings POST 保存 AI 配置', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ configured: true, provider: 'custom', apiKey: '', apiKeyMasked: 'sk-c****test' }))
+
+    await saveAiSettings({
+      provider: 'custom',
+      apiKey: 'sk-custom-test',
+      baseUrl: 'https://api.siliconflow.cn/v1',
+      model: 'Qwen/Qwen2.5-72B-Instruct',
+      temperature: 0.1,
+      maxTokens: 8192,
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/ai/settings',
+      expect.objectContaining({ method: 'POST', body: expect.stringContaining('siliconflow') }),
+    )
+  })
+
+  it('testAiSettings POST 测试 AI 配置连接', async () => {
+    const result = { success: true, model: 'gpt-4o-mini', tokensIn: 1, tokensOut: 1 }
+    fetchMock.mockResolvedValueOnce(jsonResponse(result))
+
+    await expect(testAiSettings({ provider: 'openai', apiKey: 'sk-test', model: 'gpt-4o-mini' })).resolves.toEqual(result)
+    expect(fetchMock).toHaveBeenCalledWith('/api/ai/settings/test', expect.objectContaining({ method: 'POST' }))
   })
 
   it('AI API 失败时抛出服务端错误信息', async () => {

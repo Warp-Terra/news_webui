@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createProvider, getAiConfig } from './provider'
+import { AnthropicProvider } from './providers/anthropic'
+import { GeminiProvider } from './providers/gemini'
 import { OpenAiProvider } from './providers/openai'
 import { OllamaProvider } from './providers/ollama'
 
@@ -11,6 +13,7 @@ const AI_ENV_KEYS = [
   'AI_MODEL',
   'AI_TEMPERATURE',
   'AI_MAX_TOKENS',
+  'AI_REQUEST_TIMEOUT_MS',
 ] as const
 
 const originalAiEnv = new Map(AI_ENV_KEYS.map((key) => [key, process.env[key]]))
@@ -32,6 +35,7 @@ describe('getAiConfig', () => {
       AI_MODEL: 'deepseek-chat',
       AI_TEMPERATURE: '0.2',
       AI_MAX_TOKENS: '1024',
+      AI_REQUEST_TIMEOUT_MS: '120000',
     })
 
     expect(getAiConfig()).toEqual({
@@ -41,6 +45,7 @@ describe('getAiConfig', () => {
       model: 'deepseek-chat',
       temperature: 0.2,
       maxTokens: 1024,
+      requestTimeoutMs: 120000,
     })
   })
 
@@ -57,6 +62,7 @@ describe('getAiConfig', () => {
       model: 'gpt-4o-mini',
       temperature: 0.7,
       maxTokens: 2048,
+      requestTimeoutMs: 30000,
     })
   })
 
@@ -73,7 +79,19 @@ describe('getAiConfig', () => {
       model: 'llama3.1',
       temperature: 0.7,
       maxTokens: 2048,
+      requestTimeoutMs: 30000,
     })
+  })
+
+  it('AI_REQUEST_TIMEOUT_MS 非正整数时抛出友好错误', () => {
+    setAiEnv({
+      AI_PROVIDER: 'openai',
+      AI_API_KEY: 'sk-openai-test',
+      AI_MODEL: 'gpt-4o-mini',
+      AI_REQUEST_TIMEOUT_MS: '0',
+    })
+
+    expect(() => getAiConfig()).toThrow(/AI_REQUEST_TIMEOUT_MS must be a positive integer/i)
   })
 
   it('OpenAI 兼容 provider 缺失 API Key 时抛出友好错误', () => {
@@ -94,14 +112,50 @@ describe('getAiConfig', () => {
     expect(() => getAiConfig()).toThrow(/AI_MODEL.*deepseek/i)
   })
 
-  it('不支持的 provider 会抛出可诊断错误', () => {
+  it('支持 Anthropic provider 并使用默认 baseUrl', () => {
     setAiEnv({
       AI_PROVIDER: 'anthropic',
-      AI_API_KEY: 'sk-test',
-      AI_MODEL: 'claude-sonnet',
+      AI_API_KEY: 'sk-ant-test',
+      AI_MODEL: 'claude-3-5-sonnet-latest',
     })
 
-    expect(() => getAiConfig()).toThrow(/Unsupported AI_PROVIDER.*anthropic/i)
+    expect(getAiConfig()).toMatchObject({
+      provider: 'anthropic',
+      apiKey: 'sk-ant-test',
+      baseUrl: 'https://api.anthropic.com/v1',
+      model: 'claude-3-5-sonnet-latest',
+    })
+  })
+
+  it('支持 Gemini provider 并使用默认 baseUrl', () => {
+    setAiEnv({
+      AI_PROVIDER: 'gemini',
+      AI_API_KEY: 'gemini-key',
+      AI_MODEL: 'gemini-1.5-flash',
+    })
+
+    expect(getAiConfig()).toMatchObject({
+      provider: 'gemini',
+      apiKey: 'gemini-key',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+      model: 'gemini-1.5-flash',
+    })
+  })
+
+  it('支持 custom provider 作为 OpenAI 兼容端点', () => {
+    setAiEnv({
+      AI_PROVIDER: 'custom',
+      AI_API_KEY: 'sk-custom-test',
+      AI_BASE_URL: 'https://api.siliconflow.cn/v1',
+      AI_MODEL: 'Qwen/Qwen2.5-72B-Instruct',
+    })
+
+    expect(getAiConfig()).toMatchObject({
+      provider: 'custom',
+      apiKey: 'sk-custom-test',
+      baseUrl: 'https://api.siliconflow.cn/v1',
+      model: 'Qwen/Qwen2.5-72B-Instruct',
+    })
   })
 })
 
@@ -133,6 +187,37 @@ describe('createProvider', () => {
     })
 
     expect(createProvider()).toBeInstanceOf(OllamaProvider)
+  })
+
+  it('Anthropic provider 返回 AnthropicProvider 实例', () => {
+    setAiEnv({
+      AI_PROVIDER: 'anthropic',
+      AI_API_KEY: 'sk-ant-test',
+      AI_MODEL: 'claude-3-5-sonnet-latest',
+    })
+
+    expect(createProvider()).toBeInstanceOf(AnthropicProvider)
+  })
+
+  it('Gemini provider 返回 GeminiProvider 实例', () => {
+    setAiEnv({
+      AI_PROVIDER: 'gemini',
+      AI_API_KEY: 'gemini-key',
+      AI_MODEL: 'gemini-1.5-flash',
+    })
+
+    expect(createProvider()).toBeInstanceOf(GeminiProvider)
+  })
+
+  it('Custom provider 复用 OpenAI 兼容 Provider', () => {
+    setAiEnv({
+      AI_PROVIDER: 'custom',
+      AI_API_KEY: 'sk-custom-test',
+      AI_BASE_URL: 'https://api.siliconflow.cn/v1',
+      AI_MODEL: 'Qwen/Qwen2.5-72B-Instruct',
+    })
+
+    expect(createProvider()).toBeInstanceOf(OpenAiProvider)
   })
 })
 

@@ -84,6 +84,38 @@ export interface AiUsageResponse {
   totalCost: number
 }
 
+export type AiProviderName = 'openai' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'custom'
+
+export interface AiSettingsResponse {
+  configured: boolean
+  provider: AiProviderName
+  apiKey: ''
+  apiKeyMasked: string
+  baseUrl: string
+  model: string
+  temperature: number
+  maxTokens: number
+  requestTimeoutMs: number
+  updatedAt?: string
+}
+
+export interface AiSettingsPayload {
+  provider: AiProviderName
+  apiKey?: string
+  baseUrl?: string
+  model: string
+  temperature?: number
+  maxTokens?: number
+  requestTimeoutMs?: number
+}
+
+export interface AiConnectionTestResult {
+  success: boolean
+  model: string
+  tokensIn: number
+  tokensOut: number
+}
+
 export type NewsSource = Source
 
 export class ApiError extends Error {
@@ -202,6 +234,26 @@ export async function fetchAiUsage(startDate?: string, endDate?: string): Promis
   const endpoint = query.length > 0 ? `/api/ai/usage?${query}` : '/api/ai/usage'
 
   return requestJson<AiUsageResponse>(endpoint)
+}
+
+export async function fetchAiSettings(): Promise<AiSettingsResponse> {
+  return requestJson<AiSettingsResponse>('/api/ai/settings')
+}
+
+export async function saveAiSettings(payload: AiSettingsPayload): Promise<AiSettingsResponse> {
+  return requestJson<AiSettingsResponse>('/api/ai/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function testAiSettings(payload: Partial<AiSettingsPayload> = {}): Promise<AiConnectionTestResult> {
+  return requestJson<AiConnectionTestResult>('/api/ai/settings/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
 }
 
 export async function fetchSourcesList(): Promise<NewsSource[]> {

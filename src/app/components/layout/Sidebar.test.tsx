@@ -84,4 +84,10 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: /日报/ })).toHaveAttribute('href', '/daily-report')
     expect(screen.getByRole('link', { name: /AI 用量/ })).toHaveAttribute('href', '/ai-usage')
   })
+
+  it('包含 AI 配置入口链接', () => {
+    render(<Sidebar />)
+
+    expect(screen.getByRole('link', { name: /AI 配置/ })).toHaveAttribute('href', '/ai-settings')
+  })
 })

@@ -10,6 +10,7 @@ import {
   computeDedupKey,
   deleteNews,
   deleteSource,
+  getAiSettings,
   getAllNews,
   getAllSources,
   getNewsById,
@@ -19,6 +20,7 @@ import {
   insertNews,
   insertSource,
   newsExists,
+  upsertAiSettings,
   updateNewsAiFields,
   updateLastFetched,
   updateNewsStatus,
@@ -83,6 +85,7 @@ describe('database layer', () => {
 
     expect(tableNames).toContain('news')
     expect(tableNames).toContain('sources')
+    expect(tableNames).toContain('ai_settings')
     expect(tableNames).toContain('sqlite_sequence')
     expect(db.name).toBe(dbPath)
   })
@@ -337,5 +340,64 @@ describe('database layer', () => {
 
   it('查询不存在的数据源返回 null', () => {
     expect(getSourceById(db, 404)).toBeNull()
+  })
+
+  it('默认没有持久化 AI 设置，保存后可读取完整配置', () => {
+    expect(getAiSettings(db)).toBeNull()
+
+    const saved = upsertAiSettings(db, {
+      provider: 'anthropic',
+      apiKey: 'sk-ant-test',
+      baseUrl: 'https://api.anthropic.com/v1',
+      model: 'claude-3-5-sonnet-latest',
+      temperature: 0.3,
+      maxTokens: 4096,
+      requestTimeoutMs: 30000,
+    })
+
+    expect(saved).toMatchObject({
+      provider: 'anthropic',
+      apiKey: 'sk-ant-test',
+      baseUrl: 'https://api.anthropic.com/v1',
+      model: 'claude-3-5-sonnet-latest',
+      temperature: 0.3,
+      maxTokens: 4096,
+      requestTimeoutMs: 30000,
+    })
+    expect(saved.updatedAt).toEqual(expect.any(String))
+    expect(getAiSettings(db)).toEqual(saved)
+  })
+
+  it('重复保存 AI 设置会更新单例配置并支持 OpenAI 兼容 custom provider', () => {
+    upsertAiSettings(db, {
+      provider: 'openai',
+      apiKey: 'sk-openai-test',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o-mini',
+      temperature: 0.7,
+      maxTokens: 2048,
+      requestTimeoutMs: 30000,
+    })
+
+    const updated = upsertAiSettings(db, {
+      provider: 'custom',
+      apiKey: 'sk-custom-test',
+      baseUrl: 'https://api.siliconflow.cn/v1',
+      model: 'Qwen/Qwen2.5-72B-Instruct',
+      temperature: 0.1,
+      maxTokens: 8192,
+      requestTimeoutMs: 60000,
+    })
+
+    expect(updated).toMatchObject({
+      provider: 'custom',
+      apiKey: 'sk-custom-test',
+      baseUrl: 'https://api.siliconflow.cn/v1',
+      model: 'Qwen/Qwen2.5-72B-Instruct',
+      temperature: 0.1,
+      maxTokens: 8192,
+      requestTimeoutMs: 60000,
+    })
+    expect(getAiSettings(db)).toEqual(updated)
   })
 })

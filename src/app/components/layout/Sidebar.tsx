@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { BarChart3, CircleDot, Database, FileText, Filter, Globe2, Layers3, RotateCcw } from "lucide-react";
+import { BarChart3, CircleDot, Database, FileText, Filter, Globe2, Layers3, RotateCcw, Settings } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -171,6 +171,13 @@ export function Sidebar({ className }: SidebarProps) {
         >
           <BarChart3 className="size-4" />
           AI 用量
+        </Link>
+        <Link
+          href="/ai-settings"
+          className={cn(buttonVariants({ variant: "outline" }), "mb-2 w-full")}
+        >
+          <Settings className="size-4" />
+          AI 配置
         </Link>
         <Link
           href="/sources"

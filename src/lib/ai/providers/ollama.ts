@@ -1,6 +1,7 @@
 import type { AiConfig, AiMessage, AiProvider, AiResponse } from '../types'
+import { DEFAULT_AI_REQUEST_TIMEOUT_MS } from '../env'
 
-export const OLLAMA_REQUEST_TIMEOUT_MS = 30_000
+export const OLLAMA_REQUEST_TIMEOUT_MS = DEFAULT_AI_REQUEST_TIMEOUT_MS
 
 interface OllamaChatResponse {
   model?: string
@@ -17,6 +18,7 @@ export class OllamaProvider implements AiProvider {
 
   async call(messages: AiMessage[], config?: Partial<AiConfig>): Promise<AiResponse> {
     const resolvedConfig = resolveConfig(this.defaultConfig, config)
+    const requestTimeoutMs = resolvedConfig.requestTimeoutMs ?? OLLAMA_REQUEST_TIMEOUT_MS
     const response = await postWithTimeout(
       getChatUrl(resolvedConfig.baseUrl),
       {
@@ -34,8 +36,8 @@ export class OllamaProvider implements AiProvider {
           },
         }),
       },
-      OLLAMA_REQUEST_TIMEOUT_MS,
-      `Ollama provider request timed out after ${OLLAMA_REQUEST_TIMEOUT_MS}ms.`,
+      requestTimeoutMs,
+      `Ollama provider request timed out after ${requestTimeoutMs}ms.`,
     )
 
     if (!response.ok) {

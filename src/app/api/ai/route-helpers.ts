@@ -1,5 +1,6 @@
 import type { AiSummaryResult } from '@/lib/ai/summarize'
 import {
+  getAiSettings,
   insertAiUsage,
   type AiUsageOperation,
   type Database,
@@ -49,10 +50,11 @@ export function toNewsAiFields(result: AiSummaryResult): NewsAiFieldsUpdate {
 }
 
 export function recordAiUsage(db: Database, input: AiUsageInput): void {
+  const settings = getAiSettings(db)
   insertAiUsage(db, {
     date: input.date ?? currentIsoDate(),
-    model: getEnvValue('AI_MODEL', 'unknown'),
-    provider: getEnvValue('AI_PROVIDER', 'openai').toLowerCase(),
+    model: settings?.model ?? getEnvValue('AI_MODEL', 'unknown'),
+    provider: settings?.provider ?? getEnvValue('AI_PROVIDER', 'openai').toLowerCase(),
     tokensIn: input.tokensIn,
     tokensOut: input.tokensOut,
     costUsd: estimateCostUsd(),

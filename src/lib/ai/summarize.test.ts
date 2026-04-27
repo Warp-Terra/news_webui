@@ -4,11 +4,11 @@ import type { NewsItem } from '@/app/types/news'
 
 import type { AiProvider, AiResponse } from './types'
 
-vi.mock('./provider', () => ({
-  createProvider: vi.fn(),
+vi.mock('./runtime', () => ({
+  createRuntimeProvider: vi.fn(),
 }))
 
-import { createProvider } from './provider'
+import { createRuntimeProvider } from './runtime'
 import { aggregateNews, generateDailyReport, summarizeNews } from './summarize'
 
 function makeNews(overrides: Partial<NewsItem> = {}): NewsItem {
@@ -81,10 +81,10 @@ describe('AI summarization module', () => {
       tokensIn: 123,
       tokensOut: 45,
     })
-    expect(createProvider).not.toHaveBeenCalled()
+    expect(createRuntimeProvider).not.toHaveBeenCalled()
   })
 
-  it('summarizeNews 未传入 provider 时调用 createProvider 获取默认 provider', async () => {
+  it('summarizeNews 未传入 provider 时调用 createRuntimeProvider 获取运行时配置 provider', async () => {
     const provider = makeProvider(
       JSON.stringify({
         summary: '摘要',
@@ -94,11 +94,11 @@ describe('AI summarization module', () => {
         tags: ['标签'],
       }),
     )
-    vi.mocked(createProvider).mockReturnValue(provider)
+    vi.mocked(createRuntimeProvider).mockReturnValue(provider)
 
     await expect(summarizeNews(makeNews())).resolves.toMatchObject({ summary: '摘要' })
 
-    expect(createProvider).toHaveBeenCalledTimes(1)
+    expect(createRuntimeProvider).toHaveBeenCalledTimes(1)
     expect(provider.call).toHaveBeenCalledTimes(1)
   })
 

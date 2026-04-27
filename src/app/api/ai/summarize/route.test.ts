@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AiSummaryResult } from '@/lib/ai/summarize'
-import { getAiUsage, getNewsById, type Database } from '@/lib/db'
+import { getAiUsage, getNewsById, upsertAiSettings, type Database } from '@/lib/db'
 
 import {
   createRouteTestDb,
@@ -47,8 +47,17 @@ describe('/api/ai/summarize route handler', () => {
     restoreDbPath = useTestDatabasePath(testDb.db.name)
     originalAiProvider = process.env.AI_PROVIDER
     originalAiModel = process.env.AI_MODEL
-    process.env.AI_PROVIDER = 'openai'
-    process.env.AI_MODEL = 'gpt-test'
+    process.env.AI_PROVIDER = 'env-provider-should-not-be-used'
+    process.env.AI_MODEL = 'env-model-should-not-be-used'
+    upsertAiSettings(db, {
+      provider: 'anthropic',
+      apiKey: 'sk-ant-test',
+      baseUrl: 'https://api.anthropic.com/v1',
+      model: 'claude-test',
+      temperature: 0.7,
+      maxTokens: 2048,
+      requestTimeoutMs: 30000,
+    })
     summarizeNewsMock.mockReset()
   })
 
@@ -134,8 +143,8 @@ describe('/api/ai/summarize route handler', () => {
     expect(response.status).toBe(200)
     expect(getAiUsage(db, '2000-01-01', '2100-01-01')).toMatchObject([
       {
-        model: 'gpt-test',
-        provider: 'openai',
+        model: 'claude-test',
+        provider: 'anthropic',
         tokensIn: 321,
         tokensOut: 89,
         costUsd: 0,

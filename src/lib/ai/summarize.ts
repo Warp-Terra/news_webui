@@ -1,8 +1,8 @@
 import type { NewsItem } from '@/app/types/news'
 
-import { createProvider } from './provider'
 import { extractJsonFromMarkdown, parseAggregationResult, parseAiSummary, type AggregationResult } from './parser'
 import { buildAggregationPrompt, buildDailyReportPrompt, buildNewsSummaryPrompt } from './prompts'
+import { createRuntimeProvider } from './runtime'
 import type { AiProvider } from './types'
 
 export interface AiSummaryResult {
@@ -19,7 +19,7 @@ export async function summarizeNews(
   news: Pick<NewsItem, 'title' | 'summary' | 'source'>,
   provider?: AiProvider,
 ): Promise<AiSummaryResult> {
-  const resolvedProvider = provider ?? createProvider()
+  const resolvedProvider = provider ?? createRuntimeProvider()
   const response = await resolvedProvider.call(buildNewsSummaryPrompt(news))
   const parsed = parseAiSummary(extractJsonFromMarkdown(response.content))
 
@@ -32,7 +32,7 @@ export async function summarizeNews(
 }
 
 export async function aggregateNews(newsList: NewsItem[], provider?: AiProvider): Promise<AggregationResult> {
-  const resolvedProvider = provider ?? createProvider()
+  const resolvedProvider = provider ?? createRuntimeProvider()
   const response = await resolvedProvider.call(buildAggregationPrompt(newsList))
 
   return parseAggregationResult(extractJsonFromMarkdown(response.content))
@@ -42,7 +42,7 @@ export async function generateDailyReport(
   newsList: NewsItem[],
   provider?: AiProvider,
 ): Promise<{ markdown: string; tokensIn: number; tokensOut: number }> {
-  const resolvedProvider = provider ?? createProvider()
+  const resolvedProvider = provider ?? createRuntimeProvider()
   const response = await resolvedProvider.call(buildDailyReportPrompt(newsList))
 
   return {

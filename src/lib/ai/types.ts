@@ -4,12 +4,13 @@ export interface AiMessage {
 }
 
 export interface AiConfig {
-  provider: 'openai' | 'deepseek' | 'ollama'
+  provider: 'openai' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'custom'
   apiKey: string
   baseUrl?: string
   model: string
   temperature?: number
   maxTokens?: number
+  requestTimeoutMs?: number
 }
 
 export interface AiResponse {

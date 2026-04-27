@@ -1,6 +1,7 @@
 import type { AiConfig, AiMessage, AiProvider, AiResponse } from '../types'
+import { DEFAULT_AI_REQUEST_TIMEOUT_MS } from '../env'
 
-export const OPENAI_REQUEST_TIMEOUT_MS = 30_000
+export const OPENAI_REQUEST_TIMEOUT_MS = DEFAULT_AI_REQUEST_TIMEOUT_MS
 
 interface OpenAiCompletionResponse {
   model?: string
@@ -22,6 +23,7 @@ export class OpenAiProvider implements AiProvider {
   async call(messages: AiMessage[], config?: Partial<AiConfig>): Promise<AiResponse> {
     const resolvedConfig = resolveConfig(this.defaultConfig, config)
     const providerName = getProviderDisplayName(resolvedConfig.provider)
+    const requestTimeoutMs = resolvedConfig.requestTimeoutMs ?? OPENAI_REQUEST_TIMEOUT_MS
     const response = await postWithTimeout(
       getChatCompletionsUrl(resolvedConfig.baseUrl),
       {
@@ -37,8 +39,8 @@ export class OpenAiProvider implements AiProvider {
           max_tokens: resolvedConfig.maxTokens,
         }),
       },
-      OPENAI_REQUEST_TIMEOUT_MS,
-      `${providerName} provider request timed out after ${OPENAI_REQUEST_TIMEOUT_MS}ms.`,
+      requestTimeoutMs,
+      `${providerName} provider request timed out after ${requestTimeoutMs}ms.`,
       providerName,
     )
 
@@ -132,6 +134,8 @@ function getProviderDisplayName(provider: AiConfig['provider']): string {
   switch (provider) {
     case 'deepseek':
       return 'DeepSeek'
+    case 'custom':
+      return 'Custom OpenAI-compatible'
     case 'ollama':
       return 'Ollama'
     case 'openai':

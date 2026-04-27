@@ -223,15 +223,16 @@ interface NewsItem {
 - 测试覆盖：补充数据库、RSS、API、页面交互与定时任务测试，最终全量 112 个测试通过。
 
 ### ✅ 第四阶段：AI 摘要版（已完成）
-- AI Provider 抽象：支持 OpenAI 兼容接口（OpenAI/DeepSeek）与本地 Ollama，并通过环境变量配置 provider、model、base URL、temperature 与 max tokens。
+- AI Provider 抽象：支持 OpenAI、DeepSeek、Anthropic Claude、Google Gemini、本地 Ollama 与任意 OpenAI 兼容 Custom 端点。
+- AI 配置页面：新增 `/ai-settings`，可在浏览器中配置 provider、API Key、Base URL、model、temperature 与 max tokens，并支持测试连接；配置持久化到 SQLite `ai_settings` 表。
 - 单条新闻 AI 摘要：在新闻详情面板提供“生成 AI 摘要”入口，基于标题、摘要、关键点与影响判断生成中文结构化结果。
 - AI 结果持久化：将 `summary`、`keyPoints`、`impact`、`importance`、`tags` 写回 SQLite，已存在 AI 摘要时直接复用，避免重复调用。
 - 批量摘要接口：新增批量处理未生成 AI 摘要新闻的能力，支持 limit 限制，并在单条失败时继续处理后续新闻。
 - Markdown AI 日报：新增日报页面与接口，可按日期生成 Markdown 日报，返回新闻数量与 token 统计。
 - AI 用量治理：新增 `ai_usage` 表、用量查询接口与 AI 用量页面，记录调用日期、模型、provider、token 输入/输出、成本字段、新闻 ID 与操作类型。
-- 前端导航整合：侧边栏增加“日报”和“AI 用量”入口，Dashboard 详情区展示 AI 摘要、关键点与影响判断。
+- 前端导航整合：侧边栏增加“日报”、“AI 用量”和“AI 配置”入口，Dashboard 详情区展示 AI 摘要、关键点与影响判断。
 - 测试覆盖：补充 AI provider、parser、prompts、summarize、API route、页面交互与数据库用量记录测试。
-- 最终验证：`npm run test:run` 通过 30 个测试文件、185 个测试；`npm run lint` 无 error；`npm run build` 通过生产构建。
+- 最终验证：`npm run test:run` 通过 35 个测试文件、210 个测试；`npm run lint` 无 error；`npm run build` 通过生产构建。
 
 ### 第五阶段：部署与运营增强（规划）
 - 生产环境配置：补充 `.env.example`、部署说明、数据库路径/备份策略与启动检查。

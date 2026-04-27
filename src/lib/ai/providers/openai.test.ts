@@ -94,6 +94,19 @@ describe('OpenAiProvider', () => {
     await assertion
   })
 
+  it('支持通过配置覆盖请求超时时间', async () => {
+    vi.useFakeTimers()
+    fetchMock.mockReturnValue(new Promise<Response>(() => undefined))
+
+    const requestTimeoutMs = 120_000
+    const assertion = expect(
+      new OpenAiProvider({ ...baseConfig, requestTimeoutMs }).call(messages),
+    ).rejects.toThrow(`OpenAI provider request timed out after ${requestTimeoutMs}ms.`)
+    await vi.advanceTimersByTimeAsync(requestTimeoutMs + 1)
+
+    await assertion
+  })
+
   it('调用时传入的自定义参数会覆盖默认配置', async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({
