@@ -12,8 +12,10 @@ import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/app/i18n/I18nProvider";
 import { useNewsStore } from "@/app/store/newsStore";
 import { cn } from "@/lib/utils";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 interface HeaderProps {
   isSidebarOpen?: boolean;
@@ -27,6 +29,7 @@ export function Header({
   onToggleSidebar,
 }: HeaderProps) {
   const { resolvedTheme, setTheme } = useTheme();
+  const { t } = useI18n();
   const searchQuery = useNewsStore((state) => state.searchQuery);
   const updateSearch = useNewsStore((state) => state.updateSearch);
   const isDark = resolvedTheme === "dark";
@@ -39,7 +42,7 @@ export function Header({
           variant="outline"
           size="icon"
           className="md:hidden"
-          aria-label="打开移动端筛选面板"
+          aria-label={t.header.openMobileFilters}
           onClick={onOpenFilters}
         >
           <SlidersHorizontal className="size-4" />
@@ -49,7 +52,7 @@ export function Header({
           variant="outline"
           size="icon"
           className="hidden md:inline-flex xl:hidden"
-          aria-label={isSidebarOpen ? "收起筛选栏" : "展开筛选栏"}
+          aria-label={isSidebarOpen ? t.header.collapseSidebar : t.header.expandSidebar}
           aria-pressed={isSidebarOpen}
           onClick={onToggleSidebar}
         >
@@ -61,10 +64,10 @@ export function Header({
           </div>
           <div className="min-w-0">
             <h1 className="truncate text-base font-semibold tracking-tight text-foreground md:text-lg">
-              Global News Intelligence Dashboard
+              {t.header.title}
             </h1>
             <p className="hidden text-xs text-muted-foreground lg:block">
-              Multi-region monitoring · Source intelligence · Impact briefing
+              {t.header.subtitle}
             </p>
           </div>
         </div>
@@ -77,16 +80,17 @@ export function Header({
             type="search"
             value={searchQuery}
             onChange={(event) => updateSearch(event.target.value)}
-            placeholder="搜索标题、摘要或来源..."
-            aria-label="搜索新闻"
+            placeholder={t.header.searchPlaceholder}
+            aria-label={t.header.searchLabel}
             className="h-9 bg-background pl-8 pr-3"
           />
         </div>
+        <LanguageSwitcher />
         <Button
           type="button"
           variant="outline"
           size="icon-lg"
-          aria-label="切换深色或浅色模式"
+          aria-label={t.header.toggleTheme}
           onClick={() => setTheme(isDark ? "light" : "dark")}
           className="shrink-0"
         >

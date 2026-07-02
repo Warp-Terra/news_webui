@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import Home from './page'
+import { renderWithI18n } from '@/test/renderWithI18n'
 import { resetNewsStore } from '@/test/resetNewsStore'
 
 const themeMock = vi.hoisted(() => ({
@@ -12,6 +13,16 @@ const themeMock = vi.hoisted(() => ({
 
 vi.mock('next-themes', () => ({
   useTheme: () => themeMock,
+}))
+
+const navigationMock = vi.hoisted(() => ({
+  pathname: '/zh-CN/sources',
+  replace: vi.fn(),
+}))
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => navigationMock.pathname,
+  useRouter: () => ({ replace: navigationMock.replace }),
 }))
 
 describe('Dashboard page', () => {
@@ -40,7 +51,7 @@ describe('Dashboard page', () => {
     const fetchNews = vi.fn().mockResolvedValue(undefined)
     resetNewsStore({ newsList: [], totalCount: 0, fetchNews })
 
-    render(<Home />)
+    renderWithI18n(<Home />)
 
     await waitFor(() => expect(fetchNews).toHaveBeenCalledTimes(1))
   })
@@ -49,7 +60,7 @@ describe('Dashboard page', () => {
     const fetchNews = vi.fn().mockResolvedValue(undefined)
     resetNewsStore({ newsList: [], totalCount: 0, fetchNews })
 
-    render(<Home />)
+    renderWithI18n(<Home />)
 
     expect(await screen.findByText('没有找到匹配的新闻')).toBeInTheDocument()
     expect(screen.getByText('请尝试调整搜索关键词、地区、分类或重要程度筛选条件。')).toBeInTheDocument()
@@ -61,7 +72,7 @@ describe('Dashboard page', () => {
     const triggerFetch = vi.fn().mockResolvedValue({ fetched: 3, errors: [] })
     resetNewsStore({ newsList: [], totalCount: 0, fetchNews, triggerFetch })
 
-    render(<Home />)
+    renderWithI18n(<Home />)
     await waitFor(() => expect(fetchNews).toHaveBeenCalledTimes(1))
 
     await user.click(screen.getByRole('button', { name: '刷新 RSS' }))
