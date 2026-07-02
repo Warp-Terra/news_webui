@@ -9,6 +9,8 @@ import { NewsCard } from "./NewsCard";
 export function NewsList() {
   const newsList = useNewsStore((state) => state.newsList);
   const searchQuery = useNewsStore((state) => state.searchQuery);
+  // Subscribe to filter changes so the derived list recalculates after Sidebar updates.
+  useNewsStore((state) => state.filters);
   const getFilteredNews = useNewsStore((state) => state.filteredNews);
   const filteredNews = getFilteredNews();
   const totalCount = newsList.length;

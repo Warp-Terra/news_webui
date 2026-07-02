@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { mockNews } from '../../data/mockNews'
 import { resetNewsStore } from '@/test/resetNewsStore'
 import { useNewsStore } from '../../store/newsStore'
+import { Sidebar } from '../layout/Sidebar'
 import { NewsList } from './NewsList'
 
 describe('NewsList', () => {
@@ -35,6 +37,23 @@ describe('NewsList', () => {
     useNewsStore.getState().updateFilter('regions', 'US')
 
     render(<NewsList />)
+
+    expect(screen.getByText('显示 5 / 25 条新闻')).toBeInTheDocument()
+  })
+
+  it('渲染后点击侧边栏筛选时主列表即时刷新', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <>
+        <Sidebar />
+        <NewsList />
+      </>,
+    )
+
+    expect(screen.getByText('显示 25 / 25 条新闻')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'US' }))
 
     expect(screen.getByText('显示 5 / 25 条新闻')).toBeInTheDocument()
   })
