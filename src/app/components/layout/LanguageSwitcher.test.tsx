@@ -6,6 +6,9 @@ import { renderWithI18n } from '@/test/renderWithI18n'
 import { LanguageSwitcher } from './LanguageSwitcher'
 
 const routerReplace = vi.fn()
+const { replaceLocation } = vi.hoisted(() => ({
+  replaceLocation: vi.fn(),
+}))
 let pathname = '/zh-CN/sources'
 
 vi.mock('next/navigation', () => ({
@@ -13,20 +16,26 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: routerReplace }),
 }))
 
+vi.mock('@/app/i18n/navigate', () => ({
+  replaceLocation: replaceLocation,
+}))
+
 describe('LanguageSwitcher', () => {
   beforeEach(() => {
     pathname = '/zh-CN/sources'
     routerReplace.mockClear()
+    replaceLocation.mockClear()
   })
 
-  it('renders current locale and switches while preserving page path', async () => {
+  it('switches locale via full document navigation, not client-side router', async () => {
     const user = userEvent.setup()
 
     renderWithI18n(<LanguageSwitcher />)
 
     await user.selectOptions(screen.getByLabelText('界面语言'), 'en-US')
 
-    expect(routerReplace).toHaveBeenCalledWith('/en-US/sources')
+    expect(routerReplace).not.toHaveBeenCalled()
+    expect(replaceLocation).toHaveBeenCalledWith('/en-US/sources')
   })
 
   it('shows English accessible label under English locale', () => {

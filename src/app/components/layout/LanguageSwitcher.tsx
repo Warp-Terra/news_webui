@@ -1,14 +1,13 @@
 'use client'
 
-import { startTransition } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 import { useI18n } from '@/app/i18n/I18nProvider'
+import { replaceLocation } from '@/app/i18n/navigate'
 import { LOCALE_LABELS, SUPPORTED_LOCALES, switchLocalePath, type Locale } from '@/app/i18n/routing'
 
 export function LanguageSwitcher() {
   const pathname = usePathname()
-  const router = useRouter()
   const { locale, t } = useI18n()
 
   const handleChange = (nextLocale: Locale) => {
@@ -16,9 +15,7 @@ export function LanguageSwitcher() {
       return
     }
 
-    startTransition(() => {
-      router.replace(switchLocalePath(pathname, nextLocale))
-    })
+    replaceLocation(switchLocalePath(pathname, nextLocale))
   }
 
   return (
