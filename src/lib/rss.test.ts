@@ -60,7 +60,7 @@ afterEach(() => {
 
 function createTempDb(): Database {
   tempDir = mkdtempSync(path.join(tmpdir(), 'gni-rss-'))
-  db = initDb(path.join(tempDir, 'news.db'))
+  db = initDb(path.join(tempDir, 'news.db'), { seedDefaultSources: false })
 
   return db
 }

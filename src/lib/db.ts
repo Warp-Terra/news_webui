@@ -5,8 +5,13 @@ import path from 'node:path'
 import DatabaseConstructor from 'better-sqlite3'
 
 import type { Category, ImportanceLevel, NewsItem, Region } from '@/app/types/news'
+import { DEFAULT_RSS_SOURCES } from './defaultSources'
 
 export type Database = InstanceType<typeof DatabaseConstructor>
+
+export interface InitDbOptions {
+  seedDefaultSources?: boolean
+}
 
 export type NewsStatus = 'unread' | 'read' | 'starred' | 'ignored'
 
@@ -125,6 +130,7 @@ interface AiSettingsRow {
 }
 
 const DEFAULT_DB_PATH = './data/news.db'
+const DEFAULT_SOURCES_SEEDED_KEY = 'default_sources_seeded'
 
 function resolveDbPath(dbPath: string): string {
   if (dbPath === ':memory:' || path.isAbsolute(dbPath)) {
@@ -169,6 +175,14 @@ CREATE TABLE IF NOT EXISTS sources (
 );
 `
 
+const APP_METADATA_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS app_metadata (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updatedAt TEXT NOT NULL
+);
+`
+
 const AI_USAGE_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS ai_usage (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -206,7 +220,10 @@ function migrateAiSettingsTable(db: Database): void {
   }
 }
 
-export function initDb(dbPath = process.env.NEWS_DB_PATH ?? DEFAULT_DB_PATH): Database {
+export function initDb(
+  dbPath = process.env.NEWS_DB_PATH ?? DEFAULT_DB_PATH,
+  options: InitDbOptions = {},
+): Database {
   const resolvedPath = resolveDbPath(dbPath)
 
   if (resolvedPath !== ':memory:') {
@@ -217,6 +234,7 @@ export function initDb(dbPath = process.env.NEWS_DB_PATH ?? DEFAULT_DB_PATH): Da
   db.pragma('foreign_keys = ON')
   db.exec(NEWS_TABLE_SQL)
   db.exec(SOURCES_TABLE_SQL)
+  db.exec(APP_METADATA_TABLE_SQL)
   db.exec(AI_USAGE_TABLE_SQL)
   db.exec(AI_SETTINGS_TABLE_SQL)
   migrateAiSettingsTable(db)
@@ -229,7 +247,54 @@ export function initDb(dbPath = process.env.NEWS_DB_PATH ?? DEFAULT_DB_PATH): Da
   db.exec('CREATE INDEX IF NOT EXISTS idx_ai_usage_operation ON ai_usage(operation);')
   db.exec('CREATE INDEX IF NOT EXISTS idx_ai_usage_newsId ON ai_usage(newsId);')
 
+  if (shouldSeedDefaultSources(options)) {
+    seedDefaultSourcesIfNeeded(db)
+  }
+
   return db
+}
+
+function shouldSeedDefaultSources(options: InitDbOptions): boolean {
+  if (options.seedDefaultSources !== undefined) {
+    return options.seedDefaultSources
+  }
+
+  return process.env.NEWS_SEED_DEFAULT_SOURCES?.trim().toLowerCase() !== 'false'
+}
+
+function seedDefaultSourcesIfNeeded(db: Database): void {
+  const seedDefaults = db.transaction(() => {
+    const marker = db
+      .prepare<{ key: string }, { value: string }>('SELECT value FROM app_metadata WHERE key = @key')
+      .get({ key: DEFAULT_SOURCES_SEEDED_KEY })
+
+    if (marker) {
+      return
+    }
+
+    const sourceCount =
+      db.prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM sources').get()?.count ?? 0
+
+    if (sourceCount === 0) {
+      for (const source of DEFAULT_RSS_SOURCES) {
+        insertSource(db, source)
+      }
+    }
+
+    db.prepare<SqliteParams>(`
+      INSERT INTO app_metadata (key, value, updatedAt)
+      VALUES (@key, @value, @updatedAt)
+      ON CONFLICT(key) DO UPDATE SET
+        value = @value,
+        updatedAt = @updatedAt
+    `).run({
+      key: DEFAULT_SOURCES_SEEDED_KEY,
+      value: 'true',
+      updatedAt: new Date().toISOString(),
+    })
+  })
+
+  seedDefaults.immediate()
 }
 
 export function computeDedupKey(title: string, sourceUrl?: string | null): string {

@@ -6,6 +6,7 @@ import type { Database } from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { NewsItem } from '@/app/types/news'
+import { DEFAULT_RSS_SOURCES } from './defaultSources'
 import {
   computeDedupKey,
   deleteNews,
@@ -67,7 +68,7 @@ describe('database layer', () => {
   beforeEach(() => {
     tempDir = mkdtempSync(path.join(tmpdir(), 'gni-db-'))
     dbPath = path.join(tempDir, 'nested', 'news.db')
-    db = initDb(dbPath)
+    db = initDb(dbPath, { seedDefaultSources: false })
   })
 
   afterEach(() => {
@@ -86,8 +87,66 @@ describe('database layer', () => {
     expect(tableNames).toContain('news')
     expect(tableNames).toContain('sources')
     expect(tableNames).toContain('ai_settings')
+    expect(tableNames).toContain('app_metadata')
     expect(tableNames).toContain('sqlite_sequence')
     expect(db.name).toBe(dbPath)
+  })
+
+  it('首次启用默认源初始化时为空库写入默认 RSS 源并记录标记', () => {
+    db.close()
+    db = initDb(dbPath, { seedDefaultSources: true })
+
+    const sources = getAllSources(db)
+
+    expect(sources).toHaveLength(DEFAULT_RSS_SOURCES.length)
+    expect(
+      sources.map(({ name, url, region, category, active, lastFetchedAt }) => ({
+        name,
+        url,
+        region,
+        category,
+        active,
+        lastFetchedAt,
+      })),
+    ).toEqual(DEFAULT_RSS_SOURCES)
+
+    const marker = db
+      .prepare<{ key: string }, { value: string }>('SELECT value FROM app_metadata WHERE key = @key')
+      .get({ key: 'default_sources_seeded' })
+
+    expect(marker).toEqual({ value: 'true' })
+  })
+
+  it('已有数据源时不会补默认源但会记录已初始化标记', () => {
+    const customSource = makeSource({ name: 'Custom Feed', url: 'https://example.com/rss.xml' })
+    const id = insertSource(db, customSource)
+
+    db.close()
+    db = initDb(dbPath, { seedDefaultSources: true })
+
+    expect(getAllSources(db)).toEqual([{ id, ...customSource }])
+
+    const marker = db
+      .prepare<{ key: string }, { value: string }>('SELECT value FROM app_metadata WHERE key = @key')
+      .get({ key: 'default_sources_seeded' })
+
+    expect(marker).toEqual({ value: 'true' })
+  })
+
+  it('默认源被删除后再次初始化不会自动恢复', () => {
+    db.close()
+    db = initDb(dbPath, { seedDefaultSources: true })
+
+    for (const source of getAllSources(db)) {
+      deleteSource(db, source.id)
+    }
+
+    expect(getAllSources(db)).toEqual([])
+
+    db.close()
+    db = initDb(dbPath, { seedDefaultSources: true })
+
+    expect(getAllSources(db)).toEqual([])
   })
 
   it('插入新闻后能按 id 查询并还原 JSON 数组字段', () => {

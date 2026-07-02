@@ -14,7 +14,7 @@ export interface RouteTestDb {
 
 export function createRouteTestDb(prefix = 'gni-route-'): RouteTestDb {
   const tempDir = mkdtempSync(path.join(tmpdir(), prefix))
-  const db = initDb(path.join(tempDir, 'news.db'))
+  const db = initDb(path.join(tempDir, 'news.db'), { seedDefaultSources: false })
 
   return {
     db,
@@ -28,13 +28,22 @@ export function createRouteTestDb(prefix = 'gni-route-'): RouteTestDb {
 
 export function useTestDatabasePath(dbPath: string) {
   const originalDbPath = process.env.NEWS_DB_PATH
+  const originalSeedDefaultSources = process.env.NEWS_SEED_DEFAULT_SOURCES
+
   process.env.NEWS_DB_PATH = dbPath
+  process.env.NEWS_SEED_DEFAULT_SOURCES = 'false'
 
   return () => {
     if (originalDbPath === undefined) {
       delete process.env.NEWS_DB_PATH
     } else {
       process.env.NEWS_DB_PATH = originalDbPath
+    }
+
+    if (originalSeedDefaultSources === undefined) {
+      delete process.env.NEWS_SEED_DEFAULT_SOURCES
+    } else {
+      process.env.NEWS_SEED_DEFAULT_SOURCES = originalSeedDefaultSources
     }
   }
 }

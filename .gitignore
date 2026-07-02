@@ -20,6 +20,9 @@
 # local data
 /data/
 
+# local worktrees
+/.worktrees/
+
 # production
 /build
 
