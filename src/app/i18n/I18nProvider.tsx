@@ -43,7 +43,7 @@ export function useI18n(): I18nContextValue {
 
 function formatMessage(message: string, values: Record<string, string | number> = {}): string {
   return Object.entries(values).reduce(
-    (nextMessage, [key, value]) => nextMessage.replaceAll(`{${key}}`, String(value)),
+    (nextMessage, [key, value]) => nextMessage.replaceAll(`{${key}}`, () => String(value)),
     message,
   )
 }
