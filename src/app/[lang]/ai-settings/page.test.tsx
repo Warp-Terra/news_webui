@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { fetchAiSettings, saveAiSettings, testAiSettings } from '@/lib/api'
+import { renderWithI18n } from '@/test/renderWithI18n'
 
 import AiSettingsPage from './page'
 
@@ -38,7 +39,7 @@ describe('AiSettingsPage', () => {
   })
 
   it('加载并展示 AI 配置表单和主流 Provider 选项', async () => {
-    render(<AiSettingsPage />)
+    renderWithI18n(<AiSettingsPage />)
 
     expect(await screen.findByRole('heading', { name: 'AI 配置' })).toBeInTheDocument()
     ;['OpenAI', 'DeepSeek', 'Anthropic Claude', 'Google Gemini', 'Ollama', 'Custom OpenAI-compatible'].forEach((name) => {
@@ -59,7 +60,7 @@ describe('AiSettingsPage', () => {
       maxTokens: 4096,
       requestTimeoutMs: 30000,
     })
-    render(<AiSettingsPage />)
+    renderWithI18n(<AiSettingsPage />)
 
     await user.selectOptions(await screen.findByLabelText('Provider'), 'anthropic')
     await user.clear(screen.getByLabelText('API Key'))
@@ -75,7 +76,7 @@ describe('AiSettingsPage', () => {
   it('测试连接时调用 testAiSettings 并显示结果', async () => {
     const user = userEvent.setup()
     mockedTestAiSettings.mockResolvedValue({ success: true, model: 'gpt-4o-mini', tokensIn: 1, tokensOut: 1 })
-    render(<AiSettingsPage />)
+    renderWithI18n(<AiSettingsPage />)
 
     await user.clear(await screen.findByLabelText('API Key'))
     await user.type(screen.getByLabelText('API Key'), 'sk-test')
@@ -85,5 +86,12 @@ describe('AiSettingsPage', () => {
 
     await waitFor(() => expect(mockedTestAiSettings).toHaveBeenCalled())
     expect(await screen.findByText(/连接成功/)).toBeInTheDocument()
+  })
+
+  it('英文语言下显示英文配置页面文案', async () => {
+    renderWithI18n(<AiSettingsPage />, { locale: 'en-US' })
+
+    expect(await screen.findByText('AI Settings')).toBeInTheDocument()
+    expect(screen.getByText('Model Connection Settings')).toBeInTheDocument()
   })
 })

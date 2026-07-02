@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/app/i18n/I18nProvider";
+import { localizedPath } from "@/app/i18n/routing";
 import { cn } from "@/lib/utils";
 import {
   fetchAiSettings,
@@ -48,6 +50,7 @@ const defaultForm: AiSettingsForm = {
 };
 
 export default function AiSettingsPage() {
+  const { formatMessage, locale, t } = useI18n();
   const [form, setForm] = useState<AiSettingsForm>(defaultForm);
   const [apiKeyMasked, setApiKeyMasked] = useState("");
   const [configured, setConfigured] = useState(false);
@@ -116,11 +119,11 @@ export default function AiSettingsPage() {
   });
 
   const validate = (): string | null => {
-    if (!form.model.trim()) return "请填写 Model";
-    if (selectedProvider.requiresApiKey && !form.apiKey.trim() && !apiKeyMasked) return "请填写 API Key";
-    if (!Number.isFinite(Number(form.temperature))) return "Temperature 必须是数字";
-    if (!Number.isInteger(Number(form.maxTokens)) || Number(form.maxTokens) <= 0) return "Max Tokens 必须是正整数";
-    if (!Number.isInteger(Number(form.requestTimeoutMs)) || Number(form.requestTimeoutMs) <= 0) return "请求超时时间必须是正整数";
+    if (!form.model.trim()) return t.aiSettings.modelRequired;
+    if (selectedProvider.requiresApiKey && !form.apiKey.trim() && !apiKeyMasked) return t.aiSettings.apiKeyRequired;
+    if (!Number.isFinite(Number(form.temperature))) return t.aiSettings.temperatureInvalid;
+    if (!Number.isInteger(Number(form.maxTokens)) || Number(form.maxTokens) <= 0) return t.aiSettings.maxTokensInvalid;
+    if (!Number.isInteger(Number(form.requestTimeoutMs)) || Number(form.requestTimeoutMs) <= 0) return t.aiSettings.timeoutInvalid;
     return null;
   };
 
@@ -140,7 +143,7 @@ export default function AiSettingsPage() {
       setConfigured(saved.configured);
       setApiKeyMasked(saved.apiKeyMasked);
       setForm((current) => ({ ...current, apiKey: "" }));
-      setMessage("AI 配置已保存");
+      setMessage(t.aiSettings.saved);
     } catch (saveError) {
       setError(getErrorMessage(saveError));
     } finally {
@@ -160,7 +163,7 @@ export default function AiSettingsPage() {
     setIsTesting(true);
     try {
       const result = await testAiSettings(buildPayload());
-      setMessage(`连接成功：${result.model}`);
+      setMessage(formatMessage(t.aiSettings.testSuccess, { model: result.model }));
     } catch (testError) {
       setError(getErrorMessage(testError));
     } finally {
@@ -177,17 +180,17 @@ export default function AiSettingsPage() {
               <Settings className="size-5" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold tracking-tight md:text-2xl">AI 配置</h1>
-              <p className="mt-1 text-sm text-muted-foreground">配置 Provider、API Key、Base URL 和模型参数。</p>
+              <h1 className="text-xl font-semibold tracking-tight md:text-2xl">{t.aiSettings.title}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{t.aiSettings.description}</p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <Badge variant={configured ? "secondary" : "outline"}>{configured ? "已配置" : "未配置"}</Badge>
+                <Badge variant={configured ? "secondary" : "outline"}>{configured ? t.common.configured : t.common.notConfigured}</Badge>
                 {apiKeyMasked && <Badge variant="outline">Key: {apiKeyMasked}</Badge>}
               </div>
             </div>
           </div>
-          <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
+          <Link href={localizedPath(locale, "/")} className={cn(buttonVariants({ variant: "outline" }))}>
             <ArrowLeft className="size-4" />
-            返回 Dashboard
+            {t.common.backToDashboard}
           </Link>
         </header>
 
@@ -196,18 +199,18 @@ export default function AiSettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>模型连接配置</CardTitle>
-            <CardDescription>支持 OpenAI、DeepSeek、Anthropic、Gemini、Ollama 和任意 OpenAI 兼容端点。</CardDescription>
+            <CardTitle>{t.aiSettings.connectionConfig}</CardTitle>
+            <CardDescription>{t.aiSettings.connectionDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">正在加载 AI 配置...</div>
+              <div className="py-12 text-center text-sm text-muted-foreground">{t.aiSettings.loadingSettings}</div>
             ) : (
               <form className="grid gap-5" onSubmit={handleSave}>
-                <FormField label="Provider" htmlFor="provider">
+                <FormField label={t.aiSettings.provider} htmlFor="provider">
                   <select
                     id="provider"
-                    aria-label="Provider"
+                    aria-label={t.aiSettings.provider}
                     className="h-10 rounded-md border bg-background px-3 text-sm"
                     value={form.provider}
                     onChange={(event) => handleProviderChange(event.target.value as AiProviderName)}
@@ -218,10 +221,10 @@ export default function AiSettingsPage() {
                   </select>
                 </FormField>
 
-                <FormField label="API Key" htmlFor="api-key" description={selectedProvider.requiresApiKey ? "不会回显完整密钥；留空保存时会保留已有密钥。" : "Ollama 本地模型通常不需要 API Key。"}>
+                <FormField label={t.aiSettings.apiKey} htmlFor="api-key" description={selectedProvider.requiresApiKey ? "不会回显完整密钥；留空保存时会保留已有密钥。" : "Ollama 本地模型通常不需要 API Key。"}>
                   <Input
                     id="api-key"
-                    aria-label="API Key"
+                    aria-label={t.aiSettings.apiKey}
                     type="password"
                     autoComplete="off"
                     placeholder={apiKeyMasked || (selectedProvider.requiresApiKey ? "sk-..." : "可留空")}
@@ -230,34 +233,34 @@ export default function AiSettingsPage() {
                   />
                 </FormField>
 
-                <FormField label="Base URL" htmlFor="base-url">
+                <FormField label={t.aiSettings.baseUrl} htmlFor="base-url">
                   <Input id="base-url" value={form.baseUrl} onChange={(event) => setForm((current) => ({ ...current, baseUrl: event.target.value }))} />
                 </FormField>
 
-                <FormField label="Model" htmlFor="model">
-                  <Input id="model" aria-label="Model" value={form.model} placeholder={selectedProvider.defaultModel || "输入模型名称"} onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))} />
+                <FormField label={t.aiSettings.model} htmlFor="model">
+                  <Input id="model" aria-label={t.aiSettings.model} value={form.model} placeholder={selectedProvider.defaultModel || "输入模型名称"} onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))} />
                 </FormField>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <FormField label="Temperature" htmlFor="temperature">
-                    <Input id="temperature" aria-label="Temperature" inputMode="decimal" value={form.temperature} onChange={(event) => setForm((current) => ({ ...current, temperature: event.target.value }))} />
+                  <FormField label={t.aiSettings.temperature} htmlFor="temperature">
+                    <Input id="temperature" aria-label={t.aiSettings.temperature} inputMode="decimal" value={form.temperature} onChange={(event) => setForm((current) => ({ ...current, temperature: event.target.value }))} />
                   </FormField>
-                  <FormField label="Max Tokens" htmlFor="max-tokens">
-                    <Input id="max-tokens" aria-label="Max Tokens" inputMode="numeric" value={form.maxTokens} onChange={(event) => setForm((current) => ({ ...current, maxTokens: event.target.value }))} />
+                  <FormField label={t.aiSettings.maxTokens} htmlFor="max-tokens">
+                    <Input id="max-tokens" aria-label={t.aiSettings.maxTokens} inputMode="numeric" value={form.maxTokens} onChange={(event) => setForm((current) => ({ ...current, maxTokens: event.target.value }))} />
                   </FormField>
                 </div>
-                <FormField label="请求超时 (ms)" htmlFor="request-timeout" description="生成日报等大任务建议设为 120000 (2 分钟)">
-                  <Input id="request-timeout" aria-label="请求超时" inputMode="numeric" value={form.requestTimeoutMs} onChange={(event) => setForm((current) => ({ ...current, requestTimeoutMs: event.target.value }))} />
+                <FormField label={t.aiSettings.requestTimeoutMs} htmlFor="request-timeout" description="生成日报等大任务建议设为 120000 (2 分钟)">
+                  <Input id="request-timeout" aria-label={t.aiSettings.requestTimeoutMs} inputMode="numeric" value={form.requestTimeoutMs} onChange={(event) => setForm((current) => ({ ...current, requestTimeoutMs: event.target.value }))} />
                 </FormField>
 
                 <div className="flex flex-wrap gap-3">
                   <Button type="submit" disabled={isSaving}>
                     {isSaving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-                    保存配置
+                    {t.aiSettings.saveSettings}
                   </Button>
                   <Button type="button" variant="outline" onClick={handleTest} disabled={isTesting}>
                     {isTesting ? <Loader2 className="size-4 animate-spin" /> : <TestTube2 className="size-4" />}
-                    测试连接
+                    {t.aiSettings.testConnection}
                   </Button>
                 </div>
               </form>

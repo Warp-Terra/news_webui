@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { NewsSource } from '@/lib/api'
+import { renderWithI18n } from '@/test/renderWithI18n'
 import SourcesPage from './page'
 import {
   createSource,
@@ -54,30 +55,30 @@ describe('SourcesPage', () => {
   })
 
   it('渲染数据源列表和返回 Dashboard 链接', async () => {
-    render(<SourcesPage />)
+    renderWithI18n(<SourcesPage />)
 
     expect(screen.getByRole('heading', { name: '数据源管理' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /返回 Dashboard/ })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /返回 Dashboard/ })).toHaveAttribute('href', '/zh-CN')
     expect(await screen.findByText('Reuters Top News')).toBeInTheDocument()
     expect(screen.getByText('https://www.reutersagency.com/feed/')).toBeInTheDocument()
-    expect(screen.getByText('Global')).toBeInTheDocument()
-    expect(screen.getByText('Politics')).toBeInTheDocument()
-    expect(screen.getByText('active')).toBeInTheDocument()
-    expect(screen.getByText('inactive')).toBeInTheDocument()
-    expect(screen.getByText('2026-04-23 10:00')).toBeInTheDocument()
-    expect(screen.getByText('从未拉取')).toBeInTheDocument()
+    expect(screen.getByText('全球')).toBeInTheDocument()
+    expect(screen.getByText('政治')).toBeInTheDocument()
+    expect(screen.getByText('启用')).toBeInTheDocument()
+    expect(screen.getByText('停用')).toBeInTheDocument()
+    expect(screen.getByText('2026/04/23 18:00')).toBeInTheDocument()
+    expect(screen.getByText('从未抓取')).toBeInTheDocument()
   })
 
   it('添加数据源时校验必填字段并显示错误', async () => {
     const user = userEvent.setup()
-    render(<SourcesPage />)
+    renderWithI18n(<SourcesPage />)
     await screen.findByText('Reuters Top News')
 
-    await user.click(screen.getByRole('button', { name: '添加数据源' }))
+    await user.click(screen.getByRole('button', { name: '新增数据源' }))
     await user.click(screen.getByRole('button', { name: '保存数据源' }))
 
-    expect(screen.getByText('名称不能为空')).toBeInTheDocument()
-    expect(screen.getByText('URL 不能为空')).toBeInTheDocument()
+    expect(screen.getByText('请填写名称')).toBeInTheDocument()
+    expect(screen.getByText('请填写 RSS URL')).toBeInTheDocument()
     expect(mockedCreateSource).not.toHaveBeenCalled()
   })
 
@@ -95,11 +96,11 @@ describe('SourcesPage', () => {
     mockedCreateSource.mockResolvedValueOnce(created)
     mockedFetchSourcesList.mockResolvedValueOnce(initialSources).mockResolvedValueOnce([...initialSources, created])
 
-    render(<SourcesPage />)
+    renderWithI18n(<SourcesPage />)
     await screen.findByText('Reuters Top News')
-    await user.click(screen.getByRole('button', { name: '添加数据源' }))
+    await user.click(screen.getByRole('button', { name: '新增数据源' }))
     await user.type(screen.getByLabelText('名称'), 'BBC World')
-    await user.type(screen.getByLabelText('URL'), 'https://feeds.bbci.co.uk/news/world/rss.xml')
+    await user.type(screen.getByLabelText('RSS URL'), 'https://feeds.bbci.co.uk/news/world/rss.xml')
     await user.selectOptions(screen.getByLabelText('地区'), 'EU')
     await user.selectOptions(screen.getByLabelText('分类'), 'Politics')
     await user.click(screen.getByRole('button', { name: '保存数据源' }))
@@ -130,14 +131,14 @@ describe('SourcesPage', () => {
       initialSources[1],
     ])
 
-    render(<SourcesPage />)
+    renderWithI18n(<SourcesPage />)
     const sourceCard = await screen.findByRole('article', { name: 'Reuters Top News' })
 
     await user.click(within(sourceCard).getByRole('button', { name: '编辑 Reuters Top News' }))
     const nameInput = screen.getByLabelText('名称')
     await user.clear(nameInput)
     await user.type(nameInput, 'Reuters World')
-    await user.click(screen.getByRole('button', { name: '启用数据源' }))
+    await user.click(screen.getByRole('button', { name: '启用' }))
     await user.click(screen.getByRole('button', { name: '保存数据源' }))
 
     await waitFor(() =>
@@ -157,7 +158,7 @@ describe('SourcesPage', () => {
     const user = userEvent.setup()
     mockedFetchSourcesList.mockResolvedValueOnce(initialSources).mockResolvedValueOnce([initialSources[1]])
 
-    render(<SourcesPage />)
+    renderWithI18n(<SourcesPage />)
     const sourceCard = await screen.findByRole('article', { name: 'Reuters Top News' })
 
     await user.click(within(sourceCard).getByRole('button', { name: '删除 Reuters Top News' }))
@@ -168,15 +169,22 @@ describe('SourcesPage', () => {
 
   it('URL 格式非法时显示表单验证错误', async () => {
     const user = userEvent.setup()
-    render(<SourcesPage />)
+    renderWithI18n(<SourcesPage />)
     await screen.findByText('Reuters Top News')
 
-    await user.click(screen.getByRole('button', { name: '添加数据源' }))
+    await user.click(screen.getByRole('button', { name: '新增数据源' }))
     await user.type(screen.getByLabelText('名称'), 'Invalid Feed')
-    await user.type(screen.getByLabelText('URL'), 'not-a-url')
+    await user.type(screen.getByLabelText('RSS URL'), 'not-a-url')
     await user.click(screen.getByRole('button', { name: '保存数据源' }))
 
-    expect(screen.getByText('请输入有效的 HTTP/HTTPS URL')).toBeInTheDocument()
+    expect(screen.getByText('请输入合法 URL')).toBeInTheDocument()
     expect(mockedCreateSource).not.toHaveBeenCalled()
+  })
+
+  it('英文语言下显示英文数据源页面文案', async () => {
+    renderWithI18n(<SourcesPage />, { locale: 'en-US' })
+
+    expect(await screen.findByText('Source Management')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Add Source/ })).toBeInTheDocument()
   })
 })

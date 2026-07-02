@@ -27,6 +27,9 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Toggle } from "@/components/ui/toggle";
 import type { Category, Region } from "@/app/types/news";
+import { formatFullDateTime } from "@/app/i18n/format";
+import { useI18n } from "@/app/i18n/I18nProvider";
+import { localizedPath } from "@/app/i18n/routing";
 import {
   createSource,
   deleteSource,
@@ -64,6 +67,7 @@ const emptyForm: SourceFormState = {
 };
 
 export default function SourcesPage() {
+  const { formatMessage, locale, t } = useI18n();
   const [sources, setSources] = useState<NewsSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -145,7 +149,7 @@ export default function SourcesPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const errors = validateSourceForm(form);
+    const errors = validateSourceForm(form, t);
 
     setFormErrors(errors);
 
@@ -202,25 +206,25 @@ export default function SourcesPage() {
             </div>
             <div>
               <h1 className="text-xl font-semibold tracking-tight md:text-2xl">
-                数据源管理
+                {t.sources.title}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                管理 RSS 数据源，维护地区、分类和启用状态。
+                {t.sources.description}
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <Badge variant="secondary">总计 {sources.length} 个源</Badge>
-                <Badge variant="outline">启用 {activeCount} 个源</Badge>
+                <Badge variant="secondary">{formatMessage(t.sources.totalSources, { count: sources.length })}</Badge>
+                <Badge variant="outline">{formatMessage(t.sources.activeSources, { count: activeCount })}</Badge>
               </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
+            <Link href={localizedPath(locale, "/")} className={cn(buttonVariants({ variant: "outline" }))}>
               <ArrowLeft className="size-4" />
-              返回 Dashboard
+              {t.common.backToDashboard}
             </Link>
             <Button type="button" onClick={openCreateDialog}>
               <Plus className="size-4" />
-              添加数据源
+              {t.sources.addSource}
             </Button>
           </div>
         </header>
@@ -235,7 +239,7 @@ export default function SourcesPage() {
           {isLoading ? (
             <Card>
               <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                正在加载数据源...
+                {t.sources.loadingSources}
               </CardContent>
             </Card>
           ) : sources.length > 0 ? (
@@ -250,9 +254,8 @@ export default function SourcesPage() {
           ) : (
             <Card>
               <CardContent className="py-10 text-center">
-                <h2 className="text-base font-semibold">暂无数据源</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  点击“添加数据源”创建第一个 RSS 源。
+                <p className="text-sm text-muted-foreground">
+                  {t.sources.emptySources}
                 </p>
               </CardContent>
             </Card>
@@ -263,13 +266,13 @@ export default function SourcesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingSource ? "编辑数据源" : "添加数据源"}</DialogTitle>
+            <DialogTitle>{editingSource ? t.sources.editSource : t.sources.createSource}</DialogTitle>
             <DialogDescription>
-              填写 RSS 源名称、URL、地区和分类。保存后会自动刷新列表。
+              {t.sources.dialogDescription}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-            <Field label="名称" error={formErrors.name}>
+            <Field id="source-name" label={t.sources.name} error={formErrors.name}>
               <Input
                 id="source-name"
                 value={form.name}
@@ -284,7 +287,7 @@ export default function SourcesPage() {
               />
             </Field>
 
-            <Field label="URL" error={formErrors.url}>
+            <Field id="source-url" label={t.sources.url} error={formErrors.url}>
               <Input
                 id="source-url"
                 value={form.url}
@@ -300,7 +303,7 @@ export default function SourcesPage() {
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="地区" error={formErrors.region}>
+              <Field id="source-region" label={t.sources.region} error={formErrors.region}>
                 <select
                   id="source-region"
                   className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
@@ -314,13 +317,13 @@ export default function SourcesPage() {
                 >
                   {regionOptions.map((region) => (
                     <option key={region} value={region}>
-                      {region}
+                      {t.enums.regions[region as keyof typeof t.enums.regions] ?? region}
                     </option>
                   ))}
                 </select>
               </Field>
 
-              <Field label="分类" error={formErrors.category}>
+              <Field id="source-category" label={t.sources.category} error={formErrors.category}>
                 <select
                   id="source-category"
                   className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
@@ -334,7 +337,7 @@ export default function SourcesPage() {
                 >
                   {categoryOptions.map((category) => (
                     <option key={category} value={category}>
-                      {category}
+                      {t.enums.categories[category]}
                     </option>
                   ))}
                 </select>
@@ -343,7 +346,7 @@ export default function SourcesPage() {
 
             <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/30 p-3">
               <div>
-                <div className="text-sm font-medium">启用状态</div>
+                <div className="text-sm font-medium">{t.sources.active}</div>
                 <p className="text-xs text-muted-foreground">
                   关闭后该源不会参与 RSS 抓取。
                 </p>
@@ -352,12 +355,12 @@ export default function SourcesPage() {
                 type="button"
                 variant="outline"
                 pressed={form.active}
-                aria-label="启用数据源"
+                aria-label={t.sources.active}
                 onPressedChange={(active) =>
                   setForm((currentForm) => ({ ...currentForm, active }))
                 }
               >
-                {form.active ? "active" : "inactive"}
+                {form.active ? t.sources.active : t.sources.inactive}
               </Toggle>
             </div>
 
@@ -368,10 +371,10 @@ export default function SourcesPage() {
                 onClick={() => setDialogOpen(false)}
                 disabled={isSaving}
               >
-                取消
+                {t.common.cancel}
               </Button>
               <Button type="submit" disabled={isSaving}>
-                {isSaving ? "保存中..." : "保存数据源"}
+                {isSaving ? t.sources.savingSource : t.sources.saveSource}
               </Button>
             </DialogFooter>
           </form>
@@ -388,6 +391,8 @@ interface SourceCardProps {
 }
 
 function SourceCard({ source, onEdit, onDelete }: SourceCardProps) {
+  const { locale, t } = useI18n();
+
   return (
     <Card role="article" aria-label={source.name}>
       <CardHeader className="gap-3 md:grid-cols-[1fr_auto]">
@@ -395,7 +400,7 @@ function SourceCard({ source, onEdit, onDelete }: SourceCardProps) {
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle>{source.name}</CardTitle>
             <Badge variant={source.active ? "secondary" : "outline"}>
-              {source.active ? "active" : "inactive"}
+              {source.active ? t.sources.active : t.sources.inactive}
             </Badge>
           </div>
           <CardDescription className="mt-1 break-all">{source.url}</CardDescription>
@@ -405,31 +410,30 @@ function SourceCard({ source, onEdit, onDelete }: SourceCardProps) {
             type="button"
             variant="outline"
             size="sm"
-            aria-label={`编辑 ${source.name}`}
+            aria-label={`${t.common.edit} ${source.name}`}
             onClick={() => onEdit(source)}
           >
             <Pencil className="size-3.5" />
-            编辑
+            {t.common.edit}
           </Button>
           <Button
             type="button"
             variant="destructive"
             size="sm"
-            aria-label={`删除 ${source.name}`}
+            aria-label={`${t.common.delete} ${source.name}`}
             onClick={() => onDelete(source)}
           >
             <Trash2 className="size-3.5" />
-            删除
+            {t.common.delete}
           </Button>
         </CardAction>
       </CardHeader>
       <Separator />
       <CardContent>
-        <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <SourceMeta label="地区" value={source.region} />
-          <SourceMeta label="分类" value={source.category} />
-          <SourceMeta label="状态" value={source.active ? "已启用" : "已停用"} />
-          <SourceMeta label="最后拉取时间" value={formatDateTime(source.lastFetchedAt)} />
+        <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <SourceMeta label={t.sources.region} value={t.enums.regions[source.region as keyof typeof t.enums.regions] ?? source.region} />
+          <SourceMeta label={t.sources.category} value={t.enums.categories[source.category]} />
+          <SourceMeta label={t.sources.lastFetchedAt} value={source.lastFetchedAt ? formatFullDateTime(source.lastFetchedAt, locale) : t.sources.neverFetched} />
         </dl>
       </CardContent>
     </Card>
@@ -450,13 +454,14 @@ function SourceMeta({ label, value }: { label: string; value: string }) {
 function Field({
   children,
   error,
+  id,
   label,
 }: {
   children: ReactNode;
   error?: string;
-  label: "名称" | "URL" | "地区" | "分类";
+  id: string;
+  label: string;
 }) {
-  const id = label === "名称" ? "source-name" : label === "URL" ? "source-url" : label === "地区" ? "source-region" : "source-category";
   const errorId = `${id}-error`;
 
   return (
@@ -474,38 +479,24 @@ function Field({
   );
 }
 
-function validateSourceForm(form: SourceFormState): FormErrors {
+function validateSourceForm(form: SourceFormState, t: ReturnType<typeof useI18n>["t"]): FormErrors {
   const errors: FormErrors = {};
 
-  if (form.name.trim().length === 0) {
-    errors.name = "名称不能为空";
+  if (!form.name.trim()) {
+    errors.name = t.sources.nameRequired;
   }
 
-  if (form.url.trim().length === 0) {
-    errors.url = "URL 不能为空";
-  } else if (!isHttpUrl(form.url.trim())) {
-    errors.url = "请输入有效的 HTTP/HTTPS URL";
+  if (!form.url.trim()) {
+    errors.url = t.sources.urlRequired;
+  } else {
+    try {
+      new URL(form.url);
+    } catch {
+      errors.url = t.sources.urlInvalid;
+    }
   }
 
   return errors;
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function formatDateTime(value: string | null): string {
-  if (!value) {
-    return "从未拉取";
-  }
-
-  return value.slice(0, 16).replace("T", " ");
 }
 
 function getErrorMessage(error: unknown): string {

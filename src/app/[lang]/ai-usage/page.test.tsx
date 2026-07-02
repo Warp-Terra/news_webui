@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 
 import { fetchAiUsage, type AiUsageItem } from '@/lib/api'
+import { renderWithI18n } from '@/test/renderWithI18n'
 import AiUsagePage from './page'
 
 vi.mock('@/lib/api', () => ({
@@ -48,7 +49,7 @@ describe('AiUsagePage', () => {
   })
 
   it('页面渲染标题和日期范围选择', async () => {
-    render(<AiUsagePage />)
+    renderWithI18n(<AiUsagePage />)
 
     expect(screen.getByRole('heading', { name: 'AI 用量' })).toBeInTheDocument()
     expect(screen.getByLabelText('开始日期')).toBeInTheDocument()
@@ -57,7 +58,7 @@ describe('AiUsagePage', () => {
   })
 
   it('日期范围默认最近 7 天', async () => {
-    render(<AiUsagePage />)
+    renderWithI18n(<AiUsagePage />)
 
     const endDate = getLocalIsoDate(new Date())
     const start = new Date(`${endDate}T00:00:00.000`)
@@ -69,25 +70,32 @@ describe('AiUsagePage', () => {
   })
 
   it('显示统计卡片', async () => {
-    render(<AiUsagePage />)
+    renderWithI18n(<AiUsagePage />)
 
     expect(await screen.findByText('总 Token 数')).toBeInTheDocument()
     expect(screen.getByText('700')).toBeInTheDocument()
     expect(screen.getByText('总费用（USD）')).toBeInTheDocument()
-    expect(screen.getByText('$0.0070')).toBeInTheDocument()
+    expect(screen.getAllByText('US$0.01')).toHaveLength(2)
     expect(screen.getByText('调用次数')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
   })
 
   it('显示使用记录表格', async () => {
-    render(<AiUsagePage />)
+    renderWithI18n(<AiUsagePage />)
 
     expect(await screen.findAllByText('gpt-4.1-mini')).toHaveLength(2)
     expect(screen.getByText('summarize')).toBeInTheDocument()
     expect(screen.getByText('daily-report')).toBeInTheDocument()
     expect(screen.getByText('2026-04-23')).toBeInTheDocument()
     expect(screen.getByText('200')).toBeInTheDocument()
-    expect(screen.getByText('$0.0020')).toBeInTheDocument()
+    expect(screen.getByText('US$0.00')).toBeInTheDocument()
+  })
+
+  it('英文语言下显示英文用量页面文案', async () => {
+    renderWithI18n(<AiUsagePage />, { locale: 'en-US' })
+
+    expect(await screen.findByText('AI Usage')).toBeInTheDocument()
+    expect(screen.getByText('Date Range')).toBeInTheDocument()
   })
 })
 
