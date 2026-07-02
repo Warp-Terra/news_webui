@@ -22,8 +22,8 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <label className="sr-only">
-      {t.header.languageLabel}
+    <label className="shrink-0">
+      <span className="sr-only">{t.header.languageLabel}</span>
       <select
         aria-label={t.header.languageLabel}
         className="h-9 rounded-md border bg-background px-2 text-sm"

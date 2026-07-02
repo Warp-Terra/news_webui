@@ -34,4 +34,13 @@ describe('LanguageSwitcher', () => {
 
     expect(screen.getByLabelText('Interface language')).toBeInTheDocument()
   })
+
+  it('renders the language select visibly so users can switch language', () => {
+    renderWithI18n(<LanguageSwitcher />)
+
+    const select = screen.getByRole('combobox')
+    const container = select.parentElement
+
+    expect(container?.className).not.toContain('sr-only')
+  })
 })
