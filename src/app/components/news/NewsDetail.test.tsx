@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { mockNews } from '../../data/mockNews'
 import { resetNewsStore } from '@/test/resetNewsStore'
+import { renderWithI18n } from '@/test/renderWithI18n'
 import { NewsDetail } from './NewsDetail'
 
 describe('NewsDetail', () => {
@@ -15,7 +16,7 @@ describe('NewsDetail', () => {
     const item = mockNews[5]
     resetNewsStore({ selectedId: item.id })
 
-    render(<NewsDetail />)
+    renderWithI18n(<NewsDetail />)
 
     expect(screen.getByText(item.title)).toBeInTheDocument()
     expect(screen.getByText(item.summary)).toBeInTheDocument()
@@ -32,7 +33,7 @@ describe('NewsDetail', () => {
   })
 
   it('未选中新闻时显示引导信息', () => {
-    render(<NewsDetail />)
+    renderWithI18n(<NewsDetail />)
 
     expect(screen.getByText('请选择一条新闻查看详情')).toBeInTheDocument()
     expect(
@@ -44,10 +45,10 @@ describe('NewsDetail', () => {
     const item = mockNews[5]
     resetNewsStore({ selectedId: item.id })
 
-    render(<NewsDetail />)
+    renderWithI18n(<NewsDetail />)
 
-    expect(screen.getByText(item.importance)).toBeInTheDocument()
-    expect(screen.getByText(item.importance)).toHaveClass('border-red-500/40')
+    expect(screen.getByText('关键')).toBeInTheDocument()
+    expect(screen.getByText('关键')).toHaveClass('border-red-500/40')
   })
 
   it('有 AI 摘要时显示 AI 关键点和影响判断', () => {
@@ -58,7 +59,7 @@ describe('NewsDetail', () => {
     }
     resetNewsStore({ newsList: [{ ...item, status: 'unread' }], selectedId: item.id })
 
-    render(<NewsDetail />)
+    renderWithI18n(<NewsDetail />)
 
     expect(screen.getByText('AI 摘要')).toBeInTheDocument()
     expect(screen.getByText('AI 提炼的第一条关键点')).toBeInTheDocument()
@@ -71,7 +72,7 @@ describe('NewsDetail', () => {
     const item = { ...mockNews[0], keyPoints: [], impact: undefined }
     resetNewsStore({ newsList: [{ ...item, status: 'unread' }], selectedId: item.id })
 
-    render(<NewsDetail />)
+    renderWithI18n(<NewsDetail />)
 
     expect(screen.getByRole('button', { name: /生成 AI 摘要/ })).toBeInTheDocument()
   })
@@ -86,7 +87,7 @@ describe('NewsDetail', () => {
       summarizeNewsItem,
     })
 
-    render(<NewsDetail />)
+    renderWithI18n(<NewsDetail />)
     await user.click(screen.getByRole('button', { name: /生成 AI 摘要/ }))
 
     expect(summarizeNewsItem).toHaveBeenCalledWith(item.id)
@@ -100,7 +101,7 @@ describe('NewsDetail', () => {
       isAiLoading: true,
     })
 
-    render(<NewsDetail />)
+    renderWithI18n(<NewsDetail />)
 
     expect(screen.getByRole('status', { name: '正在生成 AI 摘要' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /生成中/ })).toBeDisabled()
@@ -114,7 +115,7 @@ describe('NewsDetail', () => {
       aiError: 'AI provider unavailable',
     })
 
-    render(<NewsDetail />)
+    renderWithI18n(<NewsDetail />)
 
     expect(screen.getByText('AI provider unavailable')).toBeInTheDocument()
   })

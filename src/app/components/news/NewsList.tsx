@@ -3,10 +3,12 @@
 import { Newspaper, SearchX } from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useI18n } from "@/app/i18n/I18nProvider";
 import { useNewsStore } from "@/app/store/newsStore";
 import { NewsCard } from "./NewsCard";
 
 export function NewsList() {
+  const { formatMessage, t } = useI18n();
   const newsList = useNewsStore((state) => state.newsList);
   const searchQuery = useNewsStore((state) => state.searchQuery);
   // Subscribe to filter changes so the derived list recalculates after Sidebar updates.
@@ -22,15 +24,20 @@ export function NewsList() {
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Newspaper className="size-4 text-muted-foreground" />
-              Intelligence Feed
+              {t.newsList.title}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              显示 {filteredNews.length} / {totalCount} 条新闻
+              {formatMessage(t.newsList.count, {
+                filtered: filteredNews.length,
+                total: totalCount,
+              })}
             </p>
           </div>
           {searchQuery.trim().length > 0 && (
             <div className="hidden rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground sm:block">
-              搜索：{searchQuery.trim()}
+              {formatMessage(t.newsList.searchBadge, {
+                query: searchQuery.trim(),
+              })}
             </div>
           )}
         </div>
@@ -48,9 +55,11 @@ export function NewsList() {
             <div className="flex size-14 items-center justify-center rounded-2xl border bg-background text-muted-foreground shadow-sm">
               <SearchX className="size-6" />
             </div>
-            <h3 className="mt-4 text-base font-semibold">没有找到匹配的新闻</h3>
+            <h3 className="mt-4 text-base font-semibold">
+              {t.newsList.emptyTitle}
+            </h3>
             <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-              请尝试调整搜索关键词、地区、分类或重要程度筛选条件。
+              {t.newsList.emptyDescription}
             </p>
           </div>
         )}

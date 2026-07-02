@@ -12,12 +12,14 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/app/components/layout/Header";
+import { useI18n } from "@/app/i18n/I18nProvider";
 import { Sidebar } from "@/app/components/layout/Sidebar";
 import { NewsDetail } from "@/app/components/news/NewsDetail";
 import { NewsList } from "@/app/components/news/NewsList";
 import { useNewsStore } from "@/app/store/newsStore";
 
 export default function Home() {
+  const { formatMessage, t } = useI18n();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [isTabletSidebarOpen, setIsTabletSidebarOpen] = useState(true);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -58,8 +60,11 @@ export default function Home() {
 
     setRefreshMessage(
       result.errors.length > 0
-        ? `RSS 刷新完成，新增 ${result.fetched} 条新闻，${result.errors.length} 个源失败。`
-        : `RSS 刷新完成，新增 ${result.fetched} 条新闻。`,
+        ? formatMessage(t.dashboard.rssRefreshPartial, {
+            fetched: result.fetched,
+            errors: result.errors.length,
+          })
+        : formatMessage(t.dashboard.rssRefreshSuccess, { fetched: result.fetched }),
     );
   };
 
@@ -80,7 +85,7 @@ export default function Home() {
           </p>
         )}
         <Button type="button" onClick={handleRefreshRss} disabled={isLoading}>
-          {isLoading ? "刷新中..." : "刷新 RSS"}
+          {isLoading ? t.dashboard.refreshingRss : t.dashboard.refreshRss}
         </Button>
       </div>
 
@@ -111,8 +116,8 @@ export default function Home() {
       <Dialog open={isMobileFiltersOpen} onOpenChange={setIsMobileFiltersOpen}>
         <DialogContent className="left-0 top-0 h-dvh max-w-[21rem] translate-x-0 translate-y-0 rounded-none border-r p-0 sm:max-w-[22rem] md:hidden">
           <DialogHeader className="sr-only">
-            <DialogTitle>移动端筛选面板</DialogTitle>
-            <DialogDescription>按地区、分类和重要程度筛选新闻。</DialogDescription>
+            <DialogTitle>{t.dashboard.mobileFiltersTitle}</DialogTitle>
+            <DialogDescription>{t.dashboard.mobileFiltersDescription}</DialogDescription>
           </DialogHeader>
           <Sidebar />
         </DialogContent>
@@ -128,8 +133,8 @@ export default function Home() {
       >
         <DialogContent className="left-0 top-0 h-dvh max-w-full translate-x-0 translate-y-0 rounded-none p-0 sm:max-w-full md:hidden">
           <DialogHeader className="sr-only">
-            <DialogTitle>新闻详情</DialogTitle>
-            <DialogDescription>当前选中新闻的完整情报详情。</DialogDescription>
+            <DialogTitle>{t.dashboard.newsDetailTitle}</DialogTitle>
+            <DialogDescription>{t.dashboard.newsDetailDescription}</DialogDescription>
           </DialogHeader>
           <NewsDetail />
         </DialogContent>

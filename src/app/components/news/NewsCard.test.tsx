@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { mockNews } from '../../data/mockNews'
 import type { NewsItem } from '../../types/news'
 import { resetNewsStore } from '@/test/resetNewsStore'
+import { renderWithI18n } from '@/test/renderWithI18n'
 import { NewsCard } from './NewsCard'
 
 function formatCardDate(value: string) {
@@ -25,12 +26,12 @@ describe('NewsCard', () => {
   it('正确渲染新闻标题、来源、地区、分类和发布时间', () => {
     const item = mockNews[0]
 
-    render(<NewsCard item={item} />)
+    renderWithI18n(<NewsCard item={item} />)
 
     expect(screen.getByText(item.title)).toBeInTheDocument()
     expect(screen.getByText(item.source)).toBeInTheDocument()
-    expect(screen.getByText(item.region)).toBeInTheDocument()
-    expect(screen.getByText(item.category)).toBeInTheDocument()
+    expect(screen.getByText('美国')).toBeInTheDocument()
+    expect(screen.getByText('经济')).toBeInTheDocument()
     expect(screen.getByText(formatCardDate(item.publishedAt))).toBeInTheDocument()
   })
 
@@ -39,14 +40,14 @@ describe('NewsCard', () => {
     const criticalItem = mockNews.find(
       (item) => item.importance === 'critical',
     ) as NewsItem
-    const { rerender } = render(<NewsCard item={highItem} />)
+    const { rerender } = renderWithI18n(<NewsCard item={highItem} />)
 
-    expect(screen.getByText('high')).toHaveClass('border-amber-500/35')
+    expect(screen.getByText('高')).toHaveClass('border-amber-500/35')
 
     rerender(<NewsCard item={criticalItem} />)
 
-    expect(screen.getByText('critical')).toHaveClass('border-red-500/40')
-    expect(screen.getByText('critical')).not.toHaveClass('border-amber-500/35')
+    expect(screen.getByText('关键')).toHaveClass('border-red-500/40')
+    expect(screen.getByText('关键')).not.toHaveClass('border-amber-500/35')
   })
 
   it('点击卡片触发 onSelect 回调并传入新闻 id', async () => {
@@ -54,7 +55,7 @@ describe('NewsCard', () => {
     const onSelect = vi.fn()
     const item = mockNews[0]
 
-    render(<NewsCard item={item} onSelect={onSelect} />)
+    renderWithI18n(<NewsCard item={item} onSelect={onSelect} />)
     await user.click(screen.getByRole('button', { name: new RegExp(item.title) }))
 
     expect(onSelect).toHaveBeenCalledTimes(1)
@@ -65,7 +66,7 @@ describe('NewsCard', () => {
     const item = mockNews[0]
     resetNewsStore({ selectedId: item.id })
 
-    render(<NewsCard item={item} />)
+    renderWithI18n(<NewsCard item={item} />)
 
     const card = screen.getByRole('button', { name: new RegExp(item.title) })
     expect(card).toHaveAttribute('aria-pressed', 'true')

@@ -10,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatCompactDateTime } from "@/app/i18n/format";
+import { useI18n } from "@/app/i18n/I18nProvider";
 import { useNewsStore } from "@/app/store/newsStore";
 import type { ImportanceLevel, NewsItem } from "@/app/types/news";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,7 @@ const importanceStyles: Record<ImportanceLevel, string> = {
 };
 
 export function NewsCard({ item, onSelect }: NewsCardProps) {
+  const { locale, t } = useI18n();
   const selectedId = useNewsStore((state) => state.selectedId);
   const setSelectedId = useNewsStore((state) => state.setSelectedId);
   const isSelected = selectedId === item.id;
@@ -64,7 +67,7 @@ export function NewsCard({ item, onSelect }: NewsCardProps) {
             variant="outline"
             className={cn("capitalize", importanceStyles[item.importance])}
           >
-            {item.importance}
+            {t.enums.importance[item.importance]}
           </Badge>
         </div>
         <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -74,7 +77,7 @@ export function NewsCard({ item, onSelect }: NewsCardProps) {
           </span>
           <span className="inline-flex items-center gap-1">
             <CalendarClock className="size-3.5" />
-            {formatDate(item.publishedAt)}
+            {formatCompactDateTime(item.publishedAt, locale)}
           </span>
         </CardDescription>
       </CardHeader>
@@ -83,20 +86,10 @@ export function NewsCard({ item, onSelect }: NewsCardProps) {
           {item.summary}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{item.region}</Badge>
-          <Badge variant="outline">{item.category}</Badge>
+          <Badge variant="secondary">{t.enums.regions[item.region as keyof typeof t.enums.regions] ?? item.region}</Badge>
+          <Badge variant="outline">{t.enums.categories[item.category]}</Badge>
         </div>
       </CardContent>
     </Card>
   );
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(value));
 }

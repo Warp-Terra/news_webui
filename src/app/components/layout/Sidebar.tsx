@@ -7,6 +7,8 @@ import { BarChart3, CircleDot, Database, FileText, Filter, Globe2, Layers3, Rota
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Toggle } from "@/components/ui/toggle";
+import { useI18n } from "@/app/i18n/I18nProvider";
+import { localizedPath } from "@/app/i18n/routing";
 import { useNewsStore } from "@/app/store/newsStore";
 import type { Category, ImportanceLevel, Region } from "@/app/types/news";
 import { cn } from "@/lib/utils";
@@ -30,14 +32,8 @@ const importanceOptions: ImportanceLevel[] = [
   "critical",
 ];
 
-const importanceLabels: Record<ImportanceLevel, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  critical: "Critical",
-};
-
 export function Sidebar({ className }: SidebarProps) {
+  const { locale, t } = useI18n();
   const filters = useNewsStore((state) => state.filters);
   const totalCount = useNewsStore((state) => state.newsList.length);
   const filteredCount = useNewsStore((state) => state.filteredNews().length);
@@ -63,15 +59,17 @@ export function Sidebar({ className }: SidebarProps) {
               <Filter className="size-4" />
             </div>
             <div>
-              <h2 className="font-semibold leading-none">Filters</h2>
-              <p className="mt-1 text-xs text-muted-foreground">实时多维筛选</p>
+              <h2 className="font-semibold leading-none">{t.sidebar.title}</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t.sidebar.subtitle}
+              </p>
             </div>
           </div>
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="清除筛选"
+            aria-label={t.sidebar.clearFilters}
             disabled={!hasActiveFilters}
             onClick={clearFilters}
           >
@@ -81,19 +79,21 @@ export function Sidebar({ className }: SidebarProps) {
 
         <div className="rounded-xl border bg-muted/35 p-3">
           <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Matched results
+            {t.sidebar.matchedResults}
           </div>
           <div className="mt-2 flex items-end justify-between gap-2">
             <div className="text-2xl font-semibold tabular-nums">
               {filteredCount}
             </div>
-            <div className="pb-1 text-xs text-muted-foreground">/ {totalCount} 条</div>
+            <div className="pb-1 text-xs text-muted-foreground">
+              / {totalCount} {t.sidebar.totalSuffix}
+            </div>
           </div>
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        <FilterSection icon={Globe2} title="地区筛选">
+        <FilterSection icon={Globe2} title={t.sidebar.regionFilter}>
           {regionOptions.map((region) => (
             <Toggle
               key={region}
@@ -107,14 +107,14 @@ export function Sidebar({ className }: SidebarProps) {
               )}
               onPressedChange={() => updateFilter("regions", region)}
             >
-              {region}
+              {t.enums.regions[region as keyof typeof t.enums.regions] ?? region}
             </Toggle>
           ))}
         </FilterSection>
 
         <Separator className="my-5" />
 
-        <FilterSection icon={Layers3} title="分类筛选">
+        <FilterSection icon={Layers3} title={t.sidebar.categoryFilter}>
           {categoryOptions.map((category) => (
             <Toggle
               key={category}
@@ -128,14 +128,14 @@ export function Sidebar({ className }: SidebarProps) {
               )}
               onPressedChange={() => updateFilter("categories", category)}
             >
-              {category}
+              {t.enums.categories[category]}
             </Toggle>
           ))}
         </FilterSection>
 
         <Separator className="my-5" />
 
-        <FilterSection icon={CircleDot} title="重要程度">
+        <FilterSection icon={CircleDot} title={t.sidebar.importanceFilter}>
           {importanceOptions.map((importance) => (
             <Toggle
               key={importance}
@@ -151,7 +151,7 @@ export function Sidebar({ className }: SidebarProps) {
                 updateFilter("importanceLevels", importance)
               }
             >
-              {importanceLabels[importance]}
+              {t.enums.importance[importance]}
             </Toggle>
           ))}
         </FilterSection>
@@ -159,32 +159,32 @@ export function Sidebar({ className }: SidebarProps) {
 
       <div className="shrink-0 border-t p-4">
         <Link
-          href="/daily-report"
+          href={localizedPath(locale, "/daily-report")}
           className={cn(buttonVariants({ variant: "outline" }), "mb-2 w-full")}
         >
           <FileText className="size-4" />
-          日报
+          {t.sidebar.dailyReport}
         </Link>
         <Link
-          href="/ai-usage"
+          href={localizedPath(locale, "/ai-usage")}
           className={cn(buttonVariants({ variant: "outline" }), "mb-2 w-full")}
         >
           <BarChart3 className="size-4" />
-          AI 用量
+          {t.sidebar.aiUsage}
         </Link>
         <Link
-          href="/ai-settings"
+          href={localizedPath(locale, "/ai-settings")}
           className={cn(buttonVariants({ variant: "outline" }), "mb-2 w-full")}
         >
           <Settings className="size-4" />
-          AI 配置
+          {t.sidebar.aiSettings}
         </Link>
         <Link
-          href="/sources"
+          href={localizedPath(locale, "/sources")}
           className={cn(buttonVariants({ variant: "outline" }), "mb-2 w-full")}
         >
           <Database className="size-4" />
-          数据源管理
+          {t.sidebar.sources}
         </Link>
         <Button
           type="button"
@@ -194,7 +194,7 @@ export function Sidebar({ className }: SidebarProps) {
           onClick={clearFilters}
         >
           <RotateCcw className="size-4" />
-          清除筛选
+          {t.sidebar.clearFilters}
         </Button>
       </div>
     </aside>
