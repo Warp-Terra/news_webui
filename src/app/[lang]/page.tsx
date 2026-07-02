@@ -11,11 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Header } from "./components/layout/Header";
-import { Sidebar } from "./components/layout/Sidebar";
-import { NewsDetail } from "./components/news/NewsDetail";
-import { NewsList } from "./components/news/NewsList";
-import { useNewsStore } from "./store/newsStore";
+import { Header } from "@/app/components/layout/Header";
+import { Sidebar } from "@/app/components/layout/Sidebar";
+import { NewsDetail } from "@/app/components/news/NewsDetail";
+import { NewsList } from "@/app/components/news/NewsList";
+import { useNewsStore } from "@/app/store/newsStore";
 
 export default function Home() {
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
