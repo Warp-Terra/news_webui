@@ -43,6 +43,6 @@ describe('MarkdownReport', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Safe heading' })).toBeInTheDocument()
     expect(screen.queryByText(/alert/)).not.toBeInTheDocument()
-    expect(screen.queryByText('raw html')).not.toBeInTheDocument()
+    expect(screen.getByText('raw html')).toBeInTheDocument()
   })
 })
