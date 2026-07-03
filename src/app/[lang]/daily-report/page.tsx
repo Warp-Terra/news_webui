@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { useI18n } from "@/app/i18n/I18nProvider";
 import { localizedPath } from "@/app/i18n/routing";
 import { generateDailyReport, type DailyReportResult } from "@/lib/api";
+import { MarkdownReport } from "@/app/components/daily-report/MarkdownReport";
 import { cn } from "@/lib/utils";
 
 export default function DailyReportPage() {
@@ -104,9 +105,7 @@ export default function DailyReportPage() {
                 {t.dailyReport.generatingStatus}
               </div>
             ) : report ? (
-              <pre className="whitespace-pre-wrap rounded-xl border bg-muted/30 p-4 text-sm leading-7">
-                {report.markdown}
-              </pre>
+              <MarkdownReport markdown={report.markdown} />
             ) : (
               <p className="rounded-xl border border-dashed bg-muted/20 p-6 text-sm text-muted-foreground">
                 {t.dailyReport.emptyContent}

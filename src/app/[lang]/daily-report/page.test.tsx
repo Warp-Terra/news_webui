@@ -16,7 +16,7 @@ describe('DailyReportPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockedGenerateDailyReport.mockResolvedValue({
-      markdown: '# 全球情报日报\n\n- AI 出口管制升级',
+      markdown: '# 全球情报日报\n\n## Global\n\n- **AI 出口管制升级**\n- [BBC](https://example.com/news)',
       newsCount: 6,
       tokensIn: 120,
       tokensOut: 80,
@@ -31,14 +31,18 @@ describe('DailyReportPage', () => {
     expect(screen.getByRole('button', { name: /生成日报/ })).toBeInTheDocument()
   })
 
-  it('点击生成日报成功后显示 markdown 内容、新闻数量和 token 消耗', async () => {
+  it('点击生成日报成功后显示渲染后的 Markdown 预览、新闻数量和 token 消耗', async () => {
     const user = userEvent.setup()
-    renderWithI18n(<DailyReportPage />)
+    const { container } = renderWithI18n(<DailyReportPage />)
 
     await user.click(screen.getByRole('button', { name: /生成日报/ }))
 
     await waitFor(() => expect(mockedGenerateDailyReport).toHaveBeenCalled())
-    expect(await screen.findByText(/全球情报日报/)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '全球情报日报' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Global' })).toBeInTheDocument()
+    expect(screen.getByText('AI 出口管制升级').closest('strong')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'BBC' })).toHaveAttribute('href', 'https://example.com/news')
+    expect(container.querySelector('pre')).not.toBeInTheDocument()
     expect(screen.getByText('6 条')).toBeInTheDocument()
     expect(screen.getByText('200')).toBeInTheDocument()
   })
