@@ -223,8 +223,8 @@ interface NewsItem {
 - 测试覆盖：补充数据库、RSS、API、页面交互与定时任务测试，最终全量 112 个测试通过。
 
 ### ✅ 第四阶段：AI 摘要版（已完成）
-- AI Provider 抽象：支持 OpenAI、DeepSeek、Anthropic Claude、Google Gemini、本地 Ollama 与任意 OpenAI 兼容 Custom 端点。
-- AI 配置页面：新增 `/ai-settings`，可在浏览器中配置 provider、API Key、Base URL、model、temperature 与 max tokens，并支持测试连接；配置持久化到 SQLite `ai_settings` 表。
+- AI Provider 抽象：支持 OpenAI、DeepSeek、Qwen、Kimi、GLM、Anthropic Claude、Google Gemini、本地 Ollama 与任意 OpenAI 兼容 Custom 端点；OpenAI-compatible 厂商复用 adapter，但按 provider/model 能力映射请求参数。
+- AI 配置页面：新增 `/ai-settings`，可在浏览器中配置 provider、API Key、Base URL、model、采样温度、输出 token、推理强度与 thinking 开关；表单按模型能力显示字段，配置持久化到 SQLite `ai_settings` 表。
 - 单条新闻 AI 摘要：在新闻详情面板提供“生成 AI 摘要”入口，基于标题、摘要、关键点与影响判断生成中文结构化结果。
 - AI 结果持久化：将 `summary`、`keyPoints`、`impact`、`importance`、`tags` 写回 SQLite，已存在 AI 摘要时直接复用，避免重复调用。
 - 批量摘要接口：新增批量处理未生成 AI 摘要新闻的能力，支持 limit 限制，并在单条失败时继续处理后续新闻。
