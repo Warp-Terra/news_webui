@@ -14,6 +14,8 @@ const AI_ENV_KEYS = [
   'AI_TEMPERATURE',
   'AI_MAX_TOKENS',
   'AI_REQUEST_TIMEOUT_MS',
+  'AI_REASONING_EFFORT',
+  'AI_ENABLE_THINKING',
 ] as const
 
 const originalAiEnv = new Map(AI_ENV_KEYS.map((key) => [key, process.env[key]]))
@@ -157,6 +159,55 @@ describe('getAiConfig', () => {
       model: 'Qwen/Qwen2.5-72B-Instruct',
     })
   })
+
+  it('正确解析 Qwen provider 与 enable thinking 环境变量', () => {
+    setAiEnv({
+      AI_PROVIDER: 'qwen',
+      AI_API_KEY: 'dashscope-key',
+      AI_MODEL: 'qwen-plus',
+      AI_ENABLE_THINKING: 'true',
+    })
+
+    expect(getAiConfig()).toMatchObject({
+      provider: 'qwen',
+      apiKey: 'dashscope-key',
+      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      model: 'qwen-plus',
+      enableThinking: true,
+    })
+  })
+
+  it('正确解析 GLM provider 与 reasoning effort 环境变量', () => {
+    setAiEnv({
+      AI_PROVIDER: 'glm',
+      AI_API_KEY: 'glm-key',
+      AI_MODEL: 'glm-4.6',
+      AI_REASONING_EFFORT: 'high',
+    })
+
+    expect(getAiConfig()).toMatchObject({
+      provider: 'glm',
+      apiKey: 'glm-key',
+      baseUrl: 'https://api.z.ai/api/paas/v4',
+      model: 'glm-4.6',
+      reasoningEffort: 'high',
+    })
+  })
+
+  it('支持 Kimi provider 并使用 Moonshot 默认 baseUrl', () => {
+    setAiEnv({
+      AI_PROVIDER: 'kimi',
+      AI_API_KEY: 'moonshot-key',
+      AI_MODEL: 'kimi-k2.7',
+    })
+
+    expect(getAiConfig()).toMatchObject({
+      provider: 'kimi',
+      apiKey: 'moonshot-key',
+      baseUrl: 'https://api.moonshot.cn/v1',
+      model: 'kimi-k2.7',
+    })
+  })
 })
 
 describe('createProvider', () => {
@@ -215,6 +266,16 @@ describe('createProvider', () => {
       AI_API_KEY: 'sk-custom-test',
       AI_BASE_URL: 'https://api.siliconflow.cn/v1',
       AI_MODEL: 'Qwen/Qwen2.5-72B-Instruct',
+    })
+
+    expect(createProvider()).toBeInstanceOf(OpenAiProvider)
+  })
+
+  it.each(['qwen', 'kimi', 'glm'] as const)('%s provider 复用 OpenAI 兼容 Provider', (provider) => {
+    setAiEnv({
+      AI_PROVIDER: provider,
+      AI_API_KEY: `${provider}-key`,
+      AI_MODEL: provider === 'qwen' ? 'qwen-plus' : provider === 'kimi' ? 'kimi-k2.7' : 'glm-4.6',
     })
 
     expect(createProvider()).toBeInstanceOf(OpenAiProvider)
