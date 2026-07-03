@@ -1,4 +1,5 @@
 import type { AiConfig, AiMessage, AiProvider, AiResponse } from '../types'
+import { getModelDefinition, getProviderDefinition } from '../provider-registry'
 import { DEFAULT_AI_REQUEST_TIMEOUT_MS } from '../env'
 
 export const OPENAI_REQUEST_TIMEOUT_MS = DEFAULT_AI_REQUEST_TIMEOUT_MS
@@ -32,12 +33,7 @@ export class OpenAiProvider implements AiProvider {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${resolvedConfig.apiKey}`,
         },
-        body: JSON.stringify({
-          model: resolvedConfig.model,
-          messages,
-          temperature: resolvedConfig.temperature,
-          max_tokens: resolvedConfig.maxTokens,
-        }),
+        body: JSON.stringify(buildOpenAiCompatibleRequestBody(resolvedConfig, messages)),
       },
       requestTimeoutMs,
       `${providerName} provider request timed out after ${requestTimeoutMs}ms.`,
@@ -79,6 +75,45 @@ function resolveConfig(defaultConfig: AiConfig, override?: Partial<AiConfig>): A
   }
 
   return resolvedConfig
+}
+
+export function buildOpenAiCompatibleRequestBody(
+  resolvedConfig: AiConfig,
+  messages: AiMessage[],
+): Record<string, unknown> {
+  const modelDefinition = getModelDefinition(resolvedConfig.provider, resolvedConfig.model)
+  const body: Record<string, unknown> = {
+    model: resolvedConfig.model,
+    messages,
+  }
+
+  if (modelDefinition?.capabilities.temperature && !modelDefinition.request.omitTemperature) {
+    body.temperature = resolvedConfig.temperature
+  }
+
+  if (modelDefinition?.capabilities.maxTokens && resolvedConfig.maxTokens !== undefined) {
+    body[modelDefinition.request.maxTokensField] = resolvedConfig.maxTokens
+  }
+
+  if (
+    modelDefinition?.capabilities.reasoningEffort &&
+    modelDefinition.request.reasoningEffortField &&
+    resolvedConfig.reasoningEffort
+  ) {
+    body[modelDefinition.request.reasoningEffortField] = resolvedConfig.reasoningEffort
+  }
+
+  if (modelDefinition?.capabilities.enableThinking && resolvedConfig.enableThinking !== undefined) {
+    if (modelDefinition.request.enableThinkingField) {
+      body[modelDefinition.request.enableThinkingField] = resolvedConfig.enableThinking
+    }
+
+    if (modelDefinition.request.thinkingObject === 'type') {
+      body.thinking = { type: resolvedConfig.enableThinking ? 'enabled' : 'disabled' }
+    }
+  }
+
+  return body
 }
 
 async function postWithTimeout(
@@ -131,18 +166,7 @@ function trimTrailingSlash(value: string): string {
 }
 
 function getProviderDisplayName(provider: AiConfig['provider']): string {
-  switch (provider) {
-    case 'deepseek':
-      return 'DeepSeek'
-    case 'custom':
-      return 'Custom OpenAI-compatible'
-    case 'ollama':
-      return 'Ollama'
-    case 'openai':
-      return 'OpenAI'
-    default:
-      return 'OpenAI'
-  }
+  return getProviderDefinition(provider).label
 }
 
 function getErrorMessage(error: unknown): string {

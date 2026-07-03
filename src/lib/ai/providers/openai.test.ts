@@ -136,6 +136,97 @@ describe('OpenAiProvider', () => {
       max_tokens: 128,
     })
   })
+
+  it('Qwen 模型使用 enable_thinking 参数且保留采样温度', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ choices: [{ message: { content: 'ok' } }] }))
+
+    await new OpenAiProvider({
+      ...baseConfig,
+      provider: 'qwen',
+      apiKey: 'dashscope-key',
+      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      model: 'qwen-plus',
+      enableThinking: true,
+    }).call(messages)
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(init.body as string)).toEqual({
+      model: 'qwen-plus',
+      messages,
+      temperature: 0.7,
+      max_tokens: 2048,
+      enable_thinking: true,
+    })
+  })
+
+  it('Kimi K2.7 不发送 temperature 且使用 max_completion_tokens', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ choices: [{ message: { content: 'ok' } }] }))
+
+    await new OpenAiProvider({
+      ...baseConfig,
+      provider: 'kimi',
+      apiKey: 'moonshot-key',
+      baseUrl: 'https://api.moonshot.cn/v1',
+      model: 'kimi-k2.7',
+      temperature: 0.9,
+      maxTokens: 4096,
+    }).call(messages)
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(init.body as string)).toEqual({
+      model: 'kimi-k2.7',
+      messages,
+      max_completion_tokens: 4096,
+    })
+  })
+
+  it('GLM 映射 reasoning_effort 与 thinking.type', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ choices: [{ message: { content: 'ok' } }] }))
+
+    await new OpenAiProvider({
+      ...baseConfig,
+      provider: 'glm',
+      apiKey: 'glm-key',
+      baseUrl: 'https://api.z.ai/api/paas/v4',
+      model: 'glm-4.6',
+      reasoningEffort: 'medium',
+      enableThinking: true,
+    }).call(messages)
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      model: 'glm-4.6',
+      messages,
+      temperature: 0.7,
+      max_tokens: 2048,
+      reasoning_effort: 'medium',
+      thinking: { type: 'enabled' },
+    })
+  })
+
+  it('DeepSeek reasoner 不发送 temperature 且发送 reasoning_effort', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ choices: [{ message: { content: 'ok' } }] }))
+
+    await new OpenAiProvider({
+      ...baseConfig,
+      provider: 'deepseek',
+      apiKey: 'deepseek-key',
+      baseUrl: 'https://api.deepseek.com',
+      model: 'deepseek-reasoner',
+      reasoningEffort: 'high',
+    }).call(messages)
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(init.body as string)
+
+    expect(body).toEqual({
+      model: 'deepseek-reasoner',
+      messages,
+      max_tokens: 2048,
+      reasoning_effort: 'high',
+    })
+    expect(body).not.toHaveProperty('temperature')
+  })
 })
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
