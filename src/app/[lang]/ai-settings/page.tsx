@@ -19,6 +19,7 @@ import {
   type AiProviderName,
   type AiSettingsPayload,
 } from "@/lib/api";
+import type { AiModelDefinition, AiProviderDefinition, AiReasoningEffort } from "@/lib/ai/provider-registry";
 
 interface AiSettingsForm {
   provider: AiProviderName;
@@ -27,17 +28,10 @@ interface AiSettingsForm {
   model: string;
   temperature: string;
   maxTokens: string;
+  reasoningEffort: AiReasoningEffort | "";
+  enableThinking: "" | "true" | "false";
   requestTimeoutMs: string;
 }
-
-const providerOptions: Array<{ value: AiProviderName; label: string; defaultBaseUrl: string; defaultModel: string; requiresApiKey: boolean }> = [
-  { value: "openai", label: "OpenAI", defaultBaseUrl: "https://api.openai.com/v1", defaultModel: "gpt-4o-mini", requiresApiKey: true },
-  { value: "deepseek", label: "DeepSeek", defaultBaseUrl: "https://api.deepseek.com/v1", defaultModel: "deepseek-chat", requiresApiKey: true },
-  { value: "anthropic", label: "Anthropic Claude", defaultBaseUrl: "https://api.anthropic.com/v1", defaultModel: "claude-3-5-sonnet-latest", requiresApiKey: true },
-  { value: "gemini", label: "Google Gemini", defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta", defaultModel: "gemini-1.5-flash", requiresApiKey: true },
-  { value: "ollama", label: "Ollama", defaultBaseUrl: "http://localhost:11434", defaultModel: "llama3.1", requiresApiKey: false },
-  { value: "custom", label: "Custom OpenAI-compatible", defaultBaseUrl: "https://api.openai.com/v1", defaultModel: "", requiresApiKey: true },
-];
 
 const defaultForm: AiSettingsForm = {
   provider: "openai",
@@ -46,12 +40,15 @@ const defaultForm: AiSettingsForm = {
   model: "",
   temperature: "0.7",
   maxTokens: "2048",
+  reasoningEffort: "",
+  enableThinking: "",
   requestTimeoutMs: "30000",
 };
 
 export default function AiSettingsPage() {
   const { formatMessage, locale, t } = useI18n();
   const [form, setForm] = useState<AiSettingsForm>(defaultForm);
+  const [providers, setProviders] = useState<readonly AiProviderDefinition[]>([]);
   const [apiKeyMasked, setApiKeyMasked] = useState("");
   const [configured, setConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,8 +58,13 @@ export default function AiSettingsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const selectedProvider = useMemo(
-    () => providerOptions.find((provider) => provider.value === form.provider) ?? providerOptions[0],
-    [form.provider],
+    () => providers.find((provider) => provider.id === form.provider) ?? providers[0],
+    [form.provider, providers],
+  );
+
+  const selectedModel = useMemo(
+    () => getSelectedModel(selectedProvider, form.model),
+    [form.model, selectedProvider],
   );
 
   useEffect(() => {
@@ -71,6 +73,7 @@ export default function AiSettingsPage() {
     void fetchAiSettings()
       .then((settings) => {
         if (!isCurrent) return;
+        setProviders(settings.providers);
         setConfigured(settings.configured);
         setApiKeyMasked(settings.apiKeyMasked);
         setForm({
@@ -80,6 +83,8 @@ export default function AiSettingsPage() {
           model: settings.model,
           temperature: String(settings.temperature),
           maxTokens: String(settings.maxTokens),
+          reasoningEffort: settings.reasoningEffort,
+          enableThinking: settings.enableThinking === null ? "" : (String(settings.enableThinking) as "true" | "false"),
           requestTimeoutMs: String(settings.requestTimeoutMs),
         });
       })
@@ -98,31 +103,60 @@ export default function AiSettingsPage() {
   }, []);
 
   const handleProviderChange = (provider: AiProviderName) => {
-    const nextProvider = providerOptions.find((option) => option.value === provider) ?? providerOptions[0];
+    const nextProvider = providers.find((option) => option.id === provider) ?? providers[0];
+    if (!nextProvider) return;
+
+    const nextModel = nextProvider.defaultModel || "";
+    const modelDefinition = getSelectedModel(nextProvider, nextModel);
+
     setForm((current) => ({
       ...current,
       provider,
       baseUrl: nextProvider.defaultBaseUrl,
-      model: current.model || nextProvider.defaultModel,
-      apiKey: provider === "ollama" ? "" : current.apiKey,
+      model: nextModel,
+      temperature: String(modelDefinition?.defaultTemperature ?? 0.7),
+      maxTokens: String(modelDefinition?.defaultMaxTokens ?? 2048),
+      reasoningEffort: "",
+      enableThinking: "",
+      apiKey: nextProvider.requiresApiKey ? current.apiKey : "",
     }));
   };
 
-  const buildPayload = (): AiSettingsPayload => ({
-    provider: form.provider,
-    apiKey: form.apiKey.trim(),
-    baseUrl: form.baseUrl.trim(),
-    model: form.model.trim(),
-    temperature: Number(form.temperature),
-    maxTokens: Number(form.maxTokens),
-    requestTimeoutMs: Number(form.requestTimeoutMs),
-  });
+  const buildPayload = (): AiSettingsPayload => {
+    const payload: AiSettingsPayload = {
+      provider: form.provider,
+      apiKey: form.apiKey.trim(),
+      baseUrl: form.baseUrl.trim(),
+      model: form.model.trim(),
+      requestTimeoutMs: Number(form.requestTimeoutMs),
+    };
+
+    if (selectedModel?.capabilities.temperature) {
+      payload.temperature = Number(form.temperature);
+    }
+
+    if (selectedModel?.capabilities.maxTokens) {
+      payload.maxTokens = Number(form.maxTokens);
+    }
+
+    if (selectedModel?.capabilities.reasoningEffort) {
+      payload.reasoningEffort = form.reasoningEffort;
+    }
+
+    if (selectedModel?.capabilities.enableThinking) {
+      payload.enableThinking = form.enableThinking === "" ? null : form.enableThinking === "true";
+    }
+
+    return payload;
+  };
 
   const validate = (): string | null => {
+    if (!selectedProvider) return t.aiSettings.providerRequired;
     if (!form.model.trim()) return t.aiSettings.modelRequired;
     if (selectedProvider.requiresApiKey && !form.apiKey.trim() && !apiKeyMasked) return t.aiSettings.apiKeyRequired;
-    if (!Number.isFinite(Number(form.temperature))) return t.aiSettings.temperatureInvalid;
-    if (!Number.isInteger(Number(form.maxTokens)) || Number(form.maxTokens) <= 0) return t.aiSettings.maxTokensInvalid;
+    if (selectedModel?.capabilities.temperature && !Number.isFinite(Number(form.temperature))) return t.aiSettings.temperatureInvalid;
+    if (selectedModel?.capabilities.maxTokens && (!Number.isInteger(Number(form.maxTokens)) || Number(form.maxTokens) <= 0)) return t.aiSettings.maxTokensInvalid;
+    if (selectedModel?.capabilities.reasoningEffort && form.reasoningEffort && !["low", "medium", "high"].includes(form.reasoningEffort)) return t.aiSettings.reasoningEffortInvalid;
     if (!Number.isInteger(Number(form.requestTimeoutMs)) || Number(form.requestTimeoutMs) <= 0) return t.aiSettings.timeoutInvalid;
     return null;
   };
@@ -140,6 +174,7 @@ export default function AiSettingsPage() {
     setIsSaving(true);
     try {
       const saved = await saveAiSettings(buildPayload());
+      setProviders(saved.providers);
       setConfigured(saved.configured);
       setApiKeyMasked(saved.apiKeyMasked);
       setForm((current) => ({ ...current, apiKey: "" }));
@@ -215,19 +250,19 @@ export default function AiSettingsPage() {
                     value={form.provider}
                     onChange={(event) => handleProviderChange(event.target.value as AiProviderName)}
                   >
-                    {providerOptions.map((provider) => (
-                      <option key={provider.value} value={provider.value}>{provider.label}</option>
+                    {providers.map((provider) => (
+                      <option key={provider.id} value={provider.id}>{provider.label}</option>
                     ))}
                   </select>
                 </FormField>
 
-                <FormField label={t.aiSettings.apiKey} htmlFor="api-key" description={selectedProvider.requiresApiKey ? "不会回显完整密钥；留空保存时会保留已有密钥。" : "Ollama 本地模型通常不需要 API Key。"}>
+                <FormField label={t.aiSettings.apiKey} htmlFor="api-key" description={selectedProvider?.requiresApiKey ? "不会回显完整密钥；留空保存时会保留已有密钥。" : "本地模型通常不需要 API Key。"}>
                   <Input
                     id="api-key"
                     aria-label={t.aiSettings.apiKey}
                     type="password"
                     autoComplete="off"
-                    placeholder={apiKeyMasked || (selectedProvider.requiresApiKey ? "sk-..." : "可留空")}
+                    placeholder={apiKeyMasked || (selectedProvider?.requiresApiKey ? "sk-..." : "可留空")}
                     value={form.apiKey}
                     onChange={(event) => setForm((current) => ({ ...current, apiKey: event.target.value }))}
                   />
@@ -238,16 +273,51 @@ export default function AiSettingsPage() {
                 </FormField>
 
                 <FormField label={t.aiSettings.model} htmlFor="model">
-                  <Input id="model" aria-label={t.aiSettings.model} value={form.model} placeholder={selectedProvider.defaultModel || "输入模型名称"} onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))} />
+                  <Input
+                    id="model"
+                    aria-label={t.aiSettings.model}
+                    list="ai-model-options"
+                    value={form.model}
+                    placeholder={selectedProvider?.defaultModel || "输入模型名称"}
+                    onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
+                  />
+                  <datalist id="ai-model-options">
+                    {selectedProvider?.models.map((model) => (
+                      <option key={model.id} value={model.id}>{model.label}</option>
+                    ))}
+                  </datalist>
                 </FormField>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <FormField label={t.aiSettings.temperature} htmlFor="temperature">
-                    <Input id="temperature" aria-label={t.aiSettings.temperature} inputMode="decimal" value={form.temperature} onChange={(event) => setForm((current) => ({ ...current, temperature: event.target.value }))} />
-                  </FormField>
-                  <FormField label={t.aiSettings.maxTokens} htmlFor="max-tokens">
-                    <Input id="max-tokens" aria-label={t.aiSettings.maxTokens} inputMode="numeric" value={form.maxTokens} onChange={(event) => setForm((current) => ({ ...current, maxTokens: event.target.value }))} />
-                  </FormField>
+                  {selectedModel?.capabilities.temperature && (
+                    <FormField label={t.aiSettings.temperature} htmlFor="temperature">
+                      <Input id="temperature" aria-label={t.aiSettings.temperature} inputMode="decimal" value={form.temperature} onChange={(event) => setForm((current) => ({ ...current, temperature: event.target.value }))} />
+                    </FormField>
+                  )}
+                  {selectedModel?.capabilities.maxTokens && (
+                    <FormField label={t.aiSettings.maxTokens} htmlFor="max-tokens">
+                      <Input id="max-tokens" aria-label={t.aiSettings.maxTokens} inputMode="numeric" value={form.maxTokens} onChange={(event) => setForm((current) => ({ ...current, maxTokens: event.target.value }))} />
+                    </FormField>
+                  )}
+                  {selectedModel?.capabilities.reasoningEffort && (
+                    <FormField label={t.aiSettings.reasoningEffort} htmlFor="reasoning-effort">
+                      <select id="reasoning-effort" aria-label={t.aiSettings.reasoningEffort} className="h-10 rounded-md border bg-background px-3 text-sm" value={form.reasoningEffort} onChange={(event) => setForm((current) => ({ ...current, reasoningEffort: event.target.value as AiReasoningEffort | "" }))}>
+                        <option value="">Default</option>
+                        <option value="low">low</option>
+                        <option value="medium">medium</option>
+                        <option value="high">high</option>
+                      </select>
+                    </FormField>
+                  )}
+                  {selectedModel?.capabilities.enableThinking && (
+                    <FormField label={t.aiSettings.enableThinking} htmlFor="enable-thinking">
+                      <select id="enable-thinking" aria-label={t.aiSettings.enableThinking} className="h-10 rounded-md border bg-background px-3 text-sm" value={form.enableThinking} onChange={(event) => setForm((current) => ({ ...current, enableThinking: event.target.value as "" | "true" | "false" }))}>
+                        <option value="">Default</option>
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                      </select>
+                    </FormField>
+                  )}
                 </div>
                 <FormField label={t.aiSettings.requestTimeoutMs} htmlFor="request-timeout" description="生成日报等大任务建议设为 120000 (2 分钟)">
                   <Input id="request-timeout" aria-label={t.aiSettings.requestTimeoutMs} inputMode="numeric" value={form.requestTimeoutMs} onChange={(event) => setForm((current) => ({ ...current, requestTimeoutMs: event.target.value }))} />
@@ -269,6 +339,21 @@ export default function AiSettingsPage() {
         </Card>
       </div>
     </main>
+  );
+}
+
+function getSelectedModel(
+  provider: AiProviderDefinition | undefined,
+  model: string,
+): AiModelDefinition | undefined {
+  if (!provider) {
+    return undefined;
+  }
+
+  return (
+    provider.models.find((definition) => definition.id === model.trim()) ??
+    provider.models.find((definition) => definition.id === provider.defaultModel) ??
+    provider.models[0]
   );
 }
 
