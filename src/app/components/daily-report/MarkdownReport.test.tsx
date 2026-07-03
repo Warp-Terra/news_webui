@@ -21,9 +21,12 @@ describe('MarkdownReport', () => {
     expect(screen.getByRole('heading', { level: 1, name: '全球情报日报' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'Global' })).toBeInTheDocument()
     expect(screen.getByRole('list')).toBeInTheDocument()
-    expect(screen.getByText('AI 出口管制升级').closest('strong')).toBeInTheDocument()
+    expect(screen.getByText((content, element) =>
+  element?.tagName === 'STRONG' && content === 'AI 出口管制升级'
+)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Source link' })).toHaveAttribute('href', 'https://example.com/report')
     expect(screen.getByRole('link', { name: 'Source link' })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: 'Source link' })).toHaveAttribute('rel', 'noreferrer')
   })
 
   it('跳过 AI 返回中的原始 HTML 内容', () => {
