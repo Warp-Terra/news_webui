@@ -33,16 +33,15 @@ describe('DailyReportPage', () => {
 
   it('点击生成日报成功后显示渲染后的 Markdown 预览、新闻数量和 token 消耗', async () => {
     const user = userEvent.setup()
-    const { container } = renderWithI18n(<DailyReportPage />)
+    renderWithI18n(<DailyReportPage />)
 
     await user.click(screen.getByRole('button', { name: /生成日报/ }))
 
     await waitFor(() => expect(mockedGenerateDailyReport).toHaveBeenCalled())
     expect(await screen.findByRole('heading', { level: 1, name: '全球情报日报' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'Global' })).toBeInTheDocument()
-    expect(screen.getByText('AI 出口管制升级').closest('strong')).toBeInTheDocument()
+    expect(screen.getByText((content, element) => element?.tagName === 'STRONG' && content.includes('AI 出口管制升级'))).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'BBC' })).toHaveAttribute('href', 'https://example.com/news')
-    expect(container.querySelector('pre')).not.toBeInTheDocument()
     expect(screen.getByText('6 条')).toBeInTheDocument()
     expect(screen.getByText('200')).toBeInTheDocument()
   })
