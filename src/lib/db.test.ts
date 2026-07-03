@@ -411,6 +411,8 @@ describe('database layer', () => {
       model: 'claude-3-5-sonnet-latest',
       temperature: 0.3,
       maxTokens: 4096,
+      reasoningEffort: null,
+      enableThinking: null,
       requestTimeoutMs: 30000,
     })
 
@@ -421,6 +423,8 @@ describe('database layer', () => {
       model: 'claude-3-5-sonnet-latest',
       temperature: 0.3,
       maxTokens: 4096,
+      reasoningEffort: null,
+      enableThinking: null,
       requestTimeoutMs: 30000,
     })
     expect(saved.updatedAt).toEqual(expect.any(String))
@@ -435,6 +439,8 @@ describe('database layer', () => {
       model: 'gpt-4o-mini',
       temperature: 0.7,
       maxTokens: 2048,
+      reasoningEffort: null,
+      enableThinking: null,
       requestTimeoutMs: 30000,
     })
 
@@ -445,6 +451,8 @@ describe('database layer', () => {
       model: 'Qwen/Qwen2.5-72B-Instruct',
       temperature: 0.1,
       maxTokens: 8192,
+      reasoningEffort: null,
+      enableThinking: null,
       requestTimeoutMs: 60000,
     })
 
@@ -455,8 +463,52 @@ describe('database layer', () => {
       model: 'Qwen/Qwen2.5-72B-Instruct',
       temperature: 0.1,
       maxTokens: 8192,
+      reasoningEffort: null,
+      enableThinking: null,
       requestTimeoutMs: 60000,
     })
     expect(getAiSettings(db)).toEqual(updated)
+  })
+
+  it('迁移旧 ai_settings 表并保存推理相关配置', () => {
+    db.exec('DROP TABLE ai_settings')
+    db.exec(`
+      CREATE TABLE ai_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        provider TEXT NOT NULL,
+        apiKey TEXT NOT NULL DEFAULT '',
+        baseUrl TEXT NOT NULL,
+        model TEXT NOT NULL,
+        temperature REAL NOT NULL DEFAULT 0.7,
+        maxTokens INTEGER NOT NULL DEFAULT 2048,
+        requestTimeoutMs INTEGER NOT NULL DEFAULT 30000,
+        updatedAt TEXT NOT NULL
+      );
+    `)
+
+    db.close()
+    db = initDb(dbPath, { seedDefaultSources: false })
+
+    const columns = db
+      .prepare<[], { name: string }>('PRAGMA table_info(ai_settings)')
+      .all()
+      .map((column) => column.name)
+
+    expect(columns).toContain('reasoningEffort')
+    expect(columns).toContain('enableThinking')
+
+    const saved = upsertAiSettings(db, {
+      provider: 'glm',
+      apiKey: 'glm-test-key',
+      baseUrl: 'https://api.z.ai/api/paas/v4',
+      model: 'glm-4.6',
+      temperature: 0.5,
+      maxTokens: 4096,
+      reasoningEffort: 'medium',
+      enableThinking: true,
+      requestTimeoutMs: 60000,
+    })
+
+    expect(getAiSettings(db)).toEqual(saved)
   })
 })

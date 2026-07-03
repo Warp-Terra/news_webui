@@ -5,6 +5,7 @@ import path from 'node:path'
 import DatabaseConstructor from 'better-sqlite3'
 
 import type { Category, ImportanceLevel, NewsItem, Region } from '@/app/types/news'
+import type { AiProviderName, AiReasoningEffort } from './ai/provider-registry'
 import { DEFAULT_RSS_SOURCES } from './defaultSources'
 
 export type Database = InstanceType<typeof DatabaseConstructor>
@@ -39,7 +40,7 @@ export interface NewsAiFieldsUpdate {
 
 export type AiUsageOperation = 'summarize' | 'aggregate' | 'daily-report'
 
-export type AiProviderName = 'openai' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'custom'
+export type { AiProviderName }
 
 export interface AiSettings {
   provider: AiProviderName
@@ -48,6 +49,8 @@ export interface AiSettings {
   model: string
   temperature: number
   maxTokens: number
+  reasoningEffort: AiReasoningEffort | null
+  enableThinking: boolean | null
   requestTimeoutMs: number
   updatedAt: string
 }
@@ -125,6 +128,8 @@ interface AiSettingsRow {
   model: string
   temperature: number
   maxTokens: number
+  reasoningEffort: string | null
+  enableThinking: number | null
   requestTimeoutMs: number
   updatedAt: string
 }
@@ -207,16 +212,24 @@ CREATE TABLE IF NOT EXISTS ai_settings (
   model TEXT NOT NULL,
   temperature REAL NOT NULL DEFAULT 0.7,
   maxTokens INTEGER NOT NULL DEFAULT 2048,
+  reasoningEffort TEXT,
+  enableThinking INTEGER,
   requestTimeoutMs INTEGER NOT NULL DEFAULT 30000,
   updatedAt TEXT NOT NULL
 );
 `
 
 function migrateAiSettingsTable(db: Database): void {
+  addAiSettingsColumnIfMissing(db, 'requestTimeoutMs INTEGER NOT NULL DEFAULT 30000')
+  addAiSettingsColumnIfMissing(db, 'reasoningEffort TEXT')
+  addAiSettingsColumnIfMissing(db, 'enableThinking INTEGER')
+}
+
+function addAiSettingsColumnIfMissing(db: Database, columnSql: string): void {
   try {
-    db.exec(`ALTER TABLE ai_settings ADD COLUMN requestTimeoutMs INTEGER NOT NULL DEFAULT 30000;`)
+    db.exec(`ALTER TABLE ai_settings ADD COLUMN ${columnSql};`)
   } catch {
-    // Column already exists; ignore error
+    // Column already exists; ignore error.
   }
 }
 
@@ -587,6 +600,8 @@ export function upsertAiSettings(db: Database, settings: Omit<AiSettings, 'updat
       model,
       temperature,
       maxTokens,
+      reasoningEffort,
+      enableThinking,
       requestTimeoutMs,
       updatedAt
     ) VALUES (
@@ -597,6 +612,8 @@ export function upsertAiSettings(db: Database, settings: Omit<AiSettings, 'updat
       @model,
       @temperature,
       @maxTokens,
+      @reasoningEffort,
+      @enableThinking,
       @requestTimeoutMs,
       @updatedAt
     )
@@ -607,6 +624,8 @@ export function upsertAiSettings(db: Database, settings: Omit<AiSettings, 'updat
       model = excluded.model,
       temperature = excluded.temperature,
       maxTokens = excluded.maxTokens,
+      reasoningEffort = excluded.reasoningEffort,
+      enableThinking = excluded.enableThinking,
       requestTimeoutMs = excluded.requestTimeoutMs,
       updatedAt = excluded.updatedAt
   `).run({
@@ -616,6 +635,8 @@ export function upsertAiSettings(db: Database, settings: Omit<AiSettings, 'updat
     model: settings.model,
     temperature: settings.temperature,
     maxTokens: settings.maxTokens,
+    reasoningEffort: settings.reasoningEffort,
+    enableThinking: settings.enableThinking === null ? null : settings.enableThinking ? 1 : 0,
     requestTimeoutMs: settings.requestTimeoutMs,
     updatedAt,
   })
@@ -810,6 +831,8 @@ function mapAiSettingsRow(row: AiSettingsRow): AiSettings {
     model: row.model,
     temperature: row.temperature,
     maxTokens: row.maxTokens,
+    reasoningEffort: row.reasoningEffort as AiReasoningEffort | null,
+    enableThinking: row.enableThinking === null ? null : row.enableThinking === 1,
     requestTimeoutMs: row.requestTimeoutMs,
     updatedAt: row.updatedAt,
   }

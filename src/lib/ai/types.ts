@@ -1,15 +1,19 @@
+import type { AiProviderName, AiReasoningEffort } from './provider-registry'
+
 export interface AiMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
 }
 
 export interface AiConfig {
-  provider: 'openai' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'custom'
+  provider: AiProviderName
   apiKey: string
   baseUrl?: string
   model: string
   temperature?: number
   maxTokens?: number
+  reasoningEffort?: AiReasoningEffort
+  enableThinking?: boolean
   requestTimeoutMs?: number
 }
 
