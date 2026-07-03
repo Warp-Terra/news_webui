@@ -60,6 +60,8 @@ describe('/api/ai/settings/test', () => {
       model: 'llama3.1',
       temperature: 0.7,
       maxTokens: 2048,
+      reasoningEffort: null,
+      enableThinking: null,
       requestTimeoutMs: 30000,
     })
     vi.stubGlobal(
@@ -76,6 +78,33 @@ describe('/api/ai/settings/test', () => {
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ success: true, model: 'llama3.1' })
+  })
+
+  it('使用请求中的 Qwen 临时配置测试连接并映射 enableThinking', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model: 'qwen-plus',
+          choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 1, completion_tokens: 1 },
+        }),
+        { status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await POST(
+      jsonRequest('http://localhost/api/ai/settings/test', 'POST', {
+        provider: 'qwen',
+        apiKey: 'dashscope-key',
+        model: 'qwen-plus',
+        enableThinking: true,
+      }),
+    )
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+
+    expect(response.status).toBe(200)
+    expect(JSON.parse(init.body as string)).toMatchObject({ enable_thinking: true })
   })
 
   it('连接失败时返回 502', async () => {

@@ -1,10 +1,17 @@
 import type { AiSettings } from '@/lib/db'
 
+import {
+  AI_PROVIDER_DEFINITIONS,
+  getDefaultBaseUrl,
+  type AiProviderDefinition,
+  type AiReasoningEffort,
+} from './provider-registry'
 import { getAiRequestTimeoutMs } from './env'
 import type { AiConfig } from './types'
 
 export interface PublicAiSettings {
   configured: boolean
+  providers: readonly AiProviderDefinition[]
   provider: AiConfig['provider']
   apiKey: ''
   apiKeyMasked: string
@@ -12,40 +19,43 @@ export interface PublicAiSettings {
   model: string
   temperature: number
   maxTokens: number
+  reasoningEffort: AiReasoningEffort | ''
+  enableThinking: boolean | null
   requestTimeoutMs: number
   updatedAt?: string
 }
 
 export const DEFAULT_AI_SETTINGS: Omit<AiSettings, 'apiKey' | 'updatedAt'> = {
   provider: 'openai',
-  baseUrl: 'https://api.openai.com/v1',
+  baseUrl: getDefaultBaseUrl('openai'),
   model: '',
   temperature: 0.7,
   maxTokens: 2048,
+  reasoningEffort: null,
+  enableThinking: null,
   requestTimeoutMs: 30000,
 }
 
-export const DEFAULT_BASE_URLS: Record<AiConfig['provider'], string> = {
-  openai: 'https://api.openai.com/v1',
-  deepseek: 'https://api.deepseek.com/v1',
-  anthropic: 'https://api.anthropic.com/v1',
-  gemini: 'https://generativelanguage.googleapis.com/v1beta',
-  ollama: 'http://localhost:11434',
-  custom: 'https://api.openai.com/v1',
-}
+export const DEFAULT_BASE_URLS = Object.fromEntries(
+  AI_PROVIDER_DEFINITIONS.map((provider) => [provider.id, provider.defaultBaseUrl]),
+) as Record<AiConfig['provider'], string>
 
 export function toPublicAiSettings(settings: AiSettings | null): PublicAiSettings {
   if (!settings) {
     return {
+      ...DEFAULT_AI_SETTINGS,
       configured: false,
+      providers: AI_PROVIDER_DEFINITIONS,
       apiKey: '',
       apiKeyMasked: '',
-      ...DEFAULT_AI_SETTINGS,
+      reasoningEffort: '',
+      enableThinking: null,
     }
   }
 
   return {
     configured: isAiSettingsConfigured(settings),
+    providers: AI_PROVIDER_DEFINITIONS,
     provider: settings.provider,
     apiKey: '',
     apiKeyMasked: maskApiKey(settings.apiKey),
@@ -53,6 +63,8 @@ export function toPublicAiSettings(settings: AiSettings | null): PublicAiSetting
     model: settings.model,
     temperature: settings.temperature,
     maxTokens: settings.maxTokens,
+    reasoningEffort: settings.reasoningEffort ?? '',
+    enableThinking: settings.enableThinking,
     requestTimeoutMs: settings.requestTimeoutMs,
     updatedAt: settings.updatedAt,
   }
@@ -75,7 +87,7 @@ export function maskApiKey(apiKey: string): string {
 }
 
 export function toAiConfig(settings: AiSettings): AiConfig {
-  return {
+  const config: AiConfig = {
     provider: settings.provider,
     apiKey: settings.apiKey,
     baseUrl: settings.baseUrl,
@@ -84,4 +96,14 @@ export function toAiConfig(settings: AiSettings): AiConfig {
     maxTokens: settings.maxTokens,
     requestTimeoutMs: settings.requestTimeoutMs,
   }
+
+  if (settings.reasoningEffort) {
+    config.reasoningEffort = settings.reasoningEffort
+  }
+
+  if (settings.enableThinking !== null) {
+    config.enableThinking = settings.enableThinking
+  }
+
+  return config
 }

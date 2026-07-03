@@ -38,6 +38,19 @@ describe('/api/ai/settings', () => {
       temperature: 0.7,
       maxTokens: 2048,
     })
+    expect(body.providers.map((provider: { id: string }) => provider.id)).toEqual([
+      'openai',
+      'deepseek',
+      'qwen',
+      'kimi',
+      'glm',
+      'anthropic',
+      'gemini',
+      'ollama',
+      'custom',
+    ])
+    expect(body.reasoningEffort).toBe('')
+    expect(body.enableThinking).toBeNull()
   })
 
   it('POST 保存配置并在响应中隐藏完整 API Key', async () => {
@@ -107,5 +120,50 @@ describe('/api/ai/settings', () => {
 
     expect(response.status).toBe(400)
     expect(body.error).toMatch(/model/i)
+  })
+
+  it('POST 保存 Qwen capability 配置并使用 provider 默认 Base URL', async () => {
+    const response = await POST(
+      jsonRequest('http://localhost/api/ai/settings', 'POST', {
+        provider: 'qwen',
+        apiKey: 'dashscope-key',
+        model: 'qwen-plus',
+        temperature: 0.4,
+        maxTokens: 3000,
+        enableThinking: true,
+        requestTimeoutMs: 120000,
+      }),
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      configured: true,
+      provider: 'qwen',
+      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      model: 'qwen-plus',
+      enableThinking: true,
+    })
+    expect(getAiSettings(db)).toMatchObject({
+      provider: 'qwen',
+      apiKey: 'dashscope-key',
+      reasoningEffort: null,
+      enableThinking: true,
+    })
+  })
+
+  it('POST 拒绝非法 reasoningEffort', async () => {
+    const response = await POST(
+      jsonRequest('http://localhost/api/ai/settings', 'POST', {
+        provider: 'glm',
+        apiKey: 'glm-key',
+        model: 'glm-4.6',
+        reasoningEffort: 'extreme',
+      }),
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toMatch(/reasoningEffort/i)
   })
 })

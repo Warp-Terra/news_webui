@@ -1,4 +1,5 @@
 import type { NewsItemWithStatus, NewsStatus, Source } from '@/lib/db'
+import type { AiProviderDefinition, AiProviderName, AiReasoningEffort } from '@/lib/ai/provider-registry'
 import type { ImportanceLevel } from '@/app/types/news'
 
 interface NewsListFilters {
@@ -84,10 +85,11 @@ export interface AiUsageResponse {
   totalCost: number
 }
 
-export type AiProviderName = 'openai' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'custom'
+export type { AiProviderName }
 
 export interface AiSettingsResponse {
   configured: boolean
+  providers: readonly AiProviderDefinition[]
   provider: AiProviderName
   apiKey: ''
   apiKeyMasked: string
@@ -95,6 +97,8 @@ export interface AiSettingsResponse {
   model: string
   temperature: number
   maxTokens: number
+  reasoningEffort: AiReasoningEffort | ''
+  enableThinking: boolean | null
   requestTimeoutMs: number
   updatedAt?: string
 }
@@ -106,6 +110,8 @@ export interface AiSettingsPayload {
   model: string
   temperature?: number
   maxTokens?: number
+  reasoningEffort?: AiReasoningEffort | ''
+  enableThinking?: boolean | null
   requestTimeoutMs?: number
 }
 

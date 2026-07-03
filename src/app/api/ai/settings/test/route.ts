@@ -1,12 +1,16 @@
 import { createProviderFromConfig } from '@/lib/ai/provider'
 import { getAiSettings, type AiProviderName, type AiSettings } from '@/lib/db'
 import { DEFAULT_BASE_URLS, toAiConfig } from '@/lib/ai/settings'
+import {
+  getModelDefinition,
+  getProviderDefinition,
+  isAiProviderName,
+  type AiReasoningEffort,
+} from '@/lib/ai/provider-registry'
 
 import { jsonError, readJsonObject, withDb } from '../../../route-utils'
 
 export const runtime = 'nodejs'
-
-const SUPPORTED_PROVIDERS: AiProviderName[] = ['openai', 'deepseek', 'anthropic', 'gemini', 'ollama', 'custom']
 
 export async function POST(request: Request): Promise<Response> {
   const body = (await readJsonObject(request)) ?? {}
@@ -44,25 +48,48 @@ function parseConfigFromBody(
   if (!provider) {
     return { error: 'Unsupported AI provider' }
   }
+
   const model = parseString(body.model)
   if (!model) {
     return { error: 'AI model is required' }
   }
+
+  const providerDefinition = getProviderDefinition(provider)
+  const modelDefinition = getModelDefinition(provider, model)
   const apiKey = parseString(body.apiKey) ?? current?.apiKey ?? ''
-  if (provider !== 'ollama' && apiKey.length === 0) {
+  if (providerDefinition.requiresApiKey && apiKey.length === 0) {
     return { error: 'AI API key is required' }
   }
 
-  return {
-    config: {
-      provider,
-      apiKey,
-      baseUrl: parseString(body.baseUrl) ?? DEFAULT_BASE_URLS[provider],
-      model,
-      temperature: parseNumber(body.temperature, current?.temperature ?? 0.7),
-      maxTokens: parseInteger(body.maxTokens, current?.maxTokens ?? 2048),
-    },
+  const reasoningEffort = parseReasoningEffort(body.reasoningEffort, current?.reasoningEffort ?? null)
+  if ('error' in reasoningEffort) {
+    return reasoningEffort
   }
+
+  const enableThinking = parseNullableBoolean(body.enableThinking, current?.enableThinking ?? null)
+  if ('error' in enableThinking) {
+    return enableThinking
+  }
+
+  const config: ReturnType<typeof toAiConfig> = {
+    provider,
+    apiKey,
+    baseUrl: parseString(body.baseUrl) ?? DEFAULT_BASE_URLS[provider],
+    model,
+    temperature: parseNumber(body.temperature, current?.temperature ?? 0.7),
+    maxTokens: parseInteger(body.maxTokens, current?.maxTokens ?? 2048),
+    requestTimeoutMs: parseInteger(body.requestTimeoutMs, current?.requestTimeoutMs ?? 30000),
+  }
+
+  if (modelDefinition?.capabilities.reasoningEffort && reasoningEffort.value) {
+    config.reasoningEffort = reasoningEffort.value
+  }
+
+  if (modelDefinition?.capabilities.enableThinking && enableThinking.value !== null) {
+    config.enableThinking = enableThinking.value
+  }
+
+  return { config }
 }
 
 function parseProvider(value: unknown): AiProviderName | null {
@@ -71,7 +98,7 @@ function parseProvider(value: unknown): AiProviderName | null {
   }
   const normalized = value.trim().toLowerCase()
 
-  return SUPPORTED_PROVIDERS.includes(normalized as AiProviderName) ? (normalized as AiProviderName) : null
+  return isAiProviderName(normalized) ? normalized : null
 }
 
 function parseString(value: unknown): string | undefined {
@@ -84,4 +111,31 @@ function parseNumber(value: unknown, fallback: number): number {
 
 function parseInteger(value: unknown, fallback: number): number {
   return Math.floor(parseNumber(value, fallback))
+}
+
+function parseReasoningEffort(
+  value: unknown,
+  fallback: AiReasoningEffort | null,
+): { value: AiReasoningEffort | null } | { error: string } {
+  if (value === undefined || value === null || value === '') {
+    return { value: fallback }
+  }
+
+  if (value === 'low' || value === 'medium' || value === 'high') {
+    return { value }
+  }
+
+  return { error: 'AI reasoningEffort must be one of: low, medium, high' }
+}
+
+function parseNullableBoolean(value: unknown, fallback: boolean | null): { value: boolean | null } | { error: string } {
+  if (value === undefined || value === null || value === '') {
+    return { value: fallback }
+  }
+
+  if (typeof value === 'boolean') {
+    return { value }
+  }
+
+  return { error: 'AI enableThinking must be a boolean' }
 }
