@@ -6,7 +6,6 @@ import {
   type AiProviderDefinition,
   type AiReasoningEffort,
 } from './provider-registry'
-import { getAiRequestTimeoutMs } from './env'
 import type { AiConfig } from './types'
 
 export interface PublicAiSettings {
