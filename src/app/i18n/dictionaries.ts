@@ -102,7 +102,7 @@ const zhCN = {
   dailyReport: {
     title: 'AI 日报',
     description: '选择日期后生成当日 Global News Intelligence Markdown 日报。',
-    markdownOutput: 'Markdown 输出',
+    markdownOutput: 'Markdown 预览',
     tokenStats: 'Token 统计',
     generateCardTitle: '生成日报',
     dateLabel: '日报日期',
@@ -299,7 +299,7 @@ const enUS: typeof zhCN = {
   dailyReport: {
     title: 'AI Daily Report',
     description: 'Select a date to generate the Global News Intelligence Markdown daily report.',
-    markdownOutput: 'Markdown Output',
+    markdownOutput: 'Markdown Preview',
     tokenStats: 'Token Stats',
     generateCardTitle: 'Generate Daily Report',
     dateLabel: 'Report Date',

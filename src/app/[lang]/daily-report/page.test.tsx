@@ -29,6 +29,7 @@ describe('DailyReportPage', () => {
     expect(screen.getByRole('heading', { name: 'AI 日报' })).toBeInTheDocument()
     expect(screen.getByLabelText('日报日期')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /生成日报/ })).toBeInTheDocument()
+    expect(screen.getByText('Markdown 预览')).toBeInTheDocument()
   })
 
   it('点击生成日报成功后显示渲染后的 Markdown 预览、新闻数量和 token 消耗', async () => {
@@ -61,5 +62,6 @@ describe('DailyReportPage', () => {
 
     expect(screen.getByText('AI Daily Report')).toBeInTheDocument()
     expect(screen.getByText('Generate Daily Report')).toBeInTheDocument()
+    expect(screen.getByText('Markdown Preview')).toBeInTheDocument()
   })
 })
