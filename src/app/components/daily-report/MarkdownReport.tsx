@@ -53,19 +53,12 @@ const markdownComponents: Components = {
     </pre>
   ),
 };
-
-function stripRawHtml(text: string): string {
-  return text.replace(/<[^>]+>[\s\S]*?<\/[^>]+>/g, "").replace(/<[^>]+>/g, "");
-}
-
 export function MarkdownReport({ markdown }: MarkdownReportProps) {
-  const sanitized = stripRawHtml(markdown);
-
   return (
     <div className="rounded-xl border bg-muted/20 p-4 text-sm leading-7 text-foreground shadow-sm md:p-5">
       <div className="space-y-4">
         <ReactMarkdown skipHtml components={markdownComponents}>
-          {sanitized}
+          {markdown}
         </ReactMarkdown>
       </div>
     </div>
